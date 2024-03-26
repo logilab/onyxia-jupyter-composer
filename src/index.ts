@@ -2,29 +2,53 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-
-import { requestAPI } from './handler';
+import { MainAreaWidget, ICommandPalette } from '@jupyterlab/apputils';
+import { IMainMenu } from '@jupyterlab/mainmenu';
+import { Menu } from '@lumino/widgets';
+import { OnyxiaWidget } from './onyxiaWidget';
 
 /**
- * Initialization data for the jupyterlab-onyxia-composer extension.
+ * Initialization data
  */
-const plugin: JupyterFrontEndPlugin<void> = {
-  id: 'jupyterlab-onyxia-composer:plugin',
-  description: 'A JupyterLab extension for generate onyxia app',
+const extension: JupyterFrontEndPlugin<void> = {
+  id: 'jupyterlab-onyxia-composer',
+  description: 'Onyxia Composer',
   autoStart: true,
-  activate: (app: JupyterFrontEnd) => {
-    console.log('JupyterLab extension jupyterlab-onyxia-composer is activated!');
+  requires: [ICommandPalette, IMainMenu],
+  activate: (
+    app: JupyterFrontEnd,
+    palette: ICommandPalette,
+    mainMenu: IMainMenu
+  ) => {
+    console.log('activate jupyterlab-onyxia-composer composer');
+    const { commands } = app;
 
-    requestAPI<any>('get-example')
-      .then(data => {
-        console.log(data);
-      })
-      .catch(reason => {
-        console.error(
-          `The jupyterlab_onyxia_composer server extension appears to be missing.\n${reason}`
-        );
-      });
+    // Add command
+    const command = 'jupyterlab-onyxia-composer:generate';
+    commands.addCommand(command, {
+      label: 'Generate onyxia Helm Chart',
+      caption: 'Generate onyxia Helm Chart',
+      execute: () => {
+        const content = new OnyxiaWidget();
+        const widget = new MainAreaWidget<OnyxiaWidget>({ content });
+        widget.title.label = 'Onyxia Composer';
+        app.shell.add(widget, 'main');
+      }
+    });
+
+    // Add the command to the command palette
+    const category = 'Onyxia';
+    palette.addItem({
+      command,
+      category
+    });
+    //  Add the command to the Menua
+    const menu = new Menu({ commands });
+    menu.title.label = 'Onyxia';
+    menu.id = 'onyxia';
+    mainMenu.addMenu(menu, false, { rank: 80 });
+    menu.addItem({ command });
   }
 };
 
-export default plugin;
+export default extension;
