@@ -5,7 +5,20 @@ import { ReactWidget } from '@jupyterlab/apputils';
 export const OnyxiaComponent = (): JSX.Element => {
   return (
     <div>
-      <h1>Onyxia</h1>
+      <h1>Onyxia Composer</h1>
+
+      <h2>Docker image</h2>
+      <input type="text" required size={30} />
+      <section>
+        <button
+          className="btn btn-sm btn-danger float-right-button"
+          onClick={(): void => {
+            console.log('valid');
+          }}
+        >
+          OK
+        </button>
+      </section>
     </div>
   );
 };
