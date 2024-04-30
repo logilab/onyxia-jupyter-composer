@@ -1,4 +1,7 @@
 import React from 'react';
+import Form from 'react-bootstrap/Form';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -38,8 +41,29 @@ export async function requestAPI<T>(
 
   return data;
 }
+
 const voilaDefaultURL =
   'https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg';
+
+const formStyle = {
+  maxWidth: '500px',
+  margin: '20px auto',
+  padding: '20px',
+  border: '1px solid #ddd',
+  borderRadius: '10px',
+  backgroundColor: '#f5f5f5'
+};
+
+const submitButtonStyle = {
+  marginTop: '20px',
+  backgroundColor: '#28a745', // React Bootstrap success color
+  border: 'none',
+  borderRadius: '5px',
+  padding: '10px 20px',
+  fontSize: '16px',
+  cursor: 'pointer'
+};
+
 export const OnyxiaComponent = (): JSX.Element => {
   const [name, setName] = React.useState<string | undefined>(undefined);
   const [desc, setDesc] = React.useState<string>('');
@@ -48,6 +72,7 @@ export const OnyxiaComponent = (): JSX.Element => {
     undefined
   );
   const [message, setMessage] = React.useState<string>('');
+  const [newImage, setNewImage] = React.useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -69,48 +94,92 @@ export const OnyxiaComponent = (): JSX.Element => {
 
   return (
     <div>
-      <h1>Onyxia service Composer</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Name
-          <input
-            type="text"
-            required
-            size={30}
-            onChange={e => setName(e.currentTarget.value)}
+      <Form onSubmit={handleSubmit} style={formStyle}>
+        <h1>Onyxia service Composer</h1>
+        <Row className="show-grid">
+          <Form.Group className="mb-3">
+            <Col md={10}>
+              <Form.Label>Name</Form.Label>
+            </Col>
+            <Col md={10}>
+              <Form.Control
+                type="text"
+                required
+                onChange={e => setName(e.currentTarget.value)}
+              />
+            </Col>
+          </Form.Group>
+        </Row>
+        <Row className="show-grid">
+          <Form.Group className="mb-3">
+            <Col md={10}>
+              <Form.Label>Description</Form.Label>
+            </Col>
+            <Col md={10}>
+              <Form.Control
+                type="text"
+                onChange={e => setDesc(e.currentTarget.value)}
+              />
+            </Col>
+          </Form.Group>
+        </Row>
+        <Row className="show-grid">
+          <Form.Group className="mb-3">
+            <Col md={10}>
+              <Form.Label>Icon Url</Form.Label>
+            </Col>
+            <Col md={10}>
+              <Form.Control
+                type="text"
+                onChange={e => setIconURL(e.currentTarget.value)}
+              />
+            </Col>
+          </Form.Group>
+        </Row>
+        <Row className="show-grid">
+          <Form.Group>
+            <Col md={10}>
+              <h2>Docker image</h2>
+            </Col>
+            <Col md={10}>
+              <Form.Check
+                type="switch"
+                onChange={() => setNewImage(!newImage)}
+              />
+            </Col>
+            {!newImage ? (
+              <Form.Group className="mb-3">
+                <Col md={10}>
+                  <Form.Label>Name of docker image</Form.Label>
+                </Col>
+                <Col md={10}>
+                  <Form.Control
+                    type="text"
+                    required
+                    onChange={e => setDockerImg(e.currentTarget.value)}
+                  />
+                </Col>
+              </Form.Group>
+            ) : (
+              <Form.Group className="mb-3">
+                <Col md={10}>
+                  <Form.Label>Select your app directoty</Form.Label>
+                </Col>
+                <Col md={10}>
+                  <Form.Control type="text" />
+                </Col>
+              </Form.Group>
+            )}
+          </Form.Group>
+        </Row>
+        <Row className="show-grid">
+          <Form.Control
+            style={submitButtonStyle}
+            type="submit"
+            value="Create"
           />
-        </label>
-        <br />
-        <label>
-          Description
-          <input
-            type="text"
-            size={30}
-            onChange={e => setDesc(e.currentTarget.value)}
-          />
-        </label>
-        <br />
-        <label>
-          Icon Url
-          <input
-            type="text"
-            size={30}
-            onChange={e => setIconURL(e.currentTarget.value)}
-          />
-        </label>
-        <br />
-        <label>
-          Docker image
-          <input
-            type="text"
-            required
-            size={30}
-            onChange={e => setDockerImg(e.currentTarget.value)}
-          />
-        </label>
-        <br />
-        <input type="submit" value="Create" />
-      </form>
+        </Row>
+      </Form>
       <section>{message}</section>
     </div>
   );
