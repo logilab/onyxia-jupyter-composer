@@ -47,6 +47,17 @@ def create_service(data):
     service_name = data["name"].strip().replace(' ', '_')
     new_service_dir = github_repo_dir / "charts" / service_name
     image = data['dockerImg']
+    service_version = "0.0.1"
+
+    repo = git.Repo(github_repo_dir)
+
+    for tag in repo.tags:
+        if service_name in tag.name:
+            print(tag.name)
+            tag_version = tag.name.split("-")[-1]
+            new_minor_version = str(int(tag_version.split('.')[-1]) + 1)
+            service_version = ".".join(tag_version.split('.')[:-1] + [new_minor_version])
+
     if data["newImage"]:
         # image generation
         new_image_dir = images_dir / service_name
@@ -75,12 +86,12 @@ def create_service(data):
                             .replace("${DESCRIPTION}", data.get('desc', ''))
                             .replace("${IMAGE}", image)
                             .replace("${ICONURL}", data.get('iconURL', DEFAULT_VOILA_ICON_URL))
+                            .replace("${VERSION}", service_version)
                         )
     # git
-    repo = git.Repo(github_repo_dir)
     repo.index.add(new_service_dir)
     if data["newImage"]:
         repo.index.add(new_image_dir)
     repo.index.commit(f"[auto] add {data['name']} service")
     origin = repo.remote(name='origin')
-    origin.push()
+    #origin.push()
