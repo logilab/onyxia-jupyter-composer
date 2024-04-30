@@ -1,3 +1,4 @@
+import git
 import json
 from pathlib import Path
 import os
@@ -61,3 +62,9 @@ def create_service(data):
                             .replace("${IMAGE}",  data['dockerImg'])
                             .replace("${ICONURL}", data.get('iconURL', DEFAULT_VOILA_ICON_URL))
                         )
+    # git
+    repo = git.Repo(github_repo_dir)
+    repo.index.add(new_service_dir)
+    repo.index.commit(f"[auto] add {data['name']} service")
+    origin = repo.remote(name='origin')
+    origin.push()
