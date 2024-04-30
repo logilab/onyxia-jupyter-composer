@@ -76,7 +76,7 @@ export const OnyxiaComponent = (): JSX.Element => {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const dataToSend = { name, desc, iconURL, dockerImg };
+    const dataToSend = { name, desc, iconURL, newImage, dockerImg };
     requestAPI<any>('create', {
       body: JSON.stringify(dataToSend),
       method: 'POST'
@@ -166,7 +166,10 @@ export const OnyxiaComponent = (): JSX.Element => {
                   <Form.Label>Select your app directoty</Form.Label>
                 </Col>
                 <Col md={10}>
-                  <Form.Control type="text" />
+                  <Form.Control
+                    type="text"
+                    onChange={e => setDockerImg(e.currentTarget.value)}
+                  />
                 </Col>
               </Form.Group>
             )}

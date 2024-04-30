@@ -9,6 +9,7 @@ from jupyter_server.utils import url_path_join
 import tornado
 
 DEFAULT_VOILA_ICON_URL = "https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg"
+DOCKER_REPO = 'djangoliv'
 
 class RouteHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
@@ -42,8 +43,21 @@ def setup_handlers(web_app):
 def create_service(data):
     github_repo_dir = Path.home() / "work"/ "helm-charts-logilab-services"
     voila_template_dir = github_repo_dir / "charts-template" / "voila"
+    images_dir =  github_repo_dir / "images"
     service_name = data["name"].strip().replace(' ', '_')
     new_service_dir = github_repo_dir / "charts" / service_name
+    image = data['dockerImg']
+    if data["newImage"]:
+        # image generation
+        new_image_dir = images_dir / service_name
+        os.mkdir(new_image_dir)
+        shutil.copyfile(images_dir / "Dockerfile-voila", new_image_dir / "Dockerfile")
+        image = f"{DOCKER_REPO}/{service_name}:latest"
+        for filename in os.listdir(data['dockerImg']):
+            if os.path.isdir(Path(data['dockerImg']) / filename):
+                shutil.copytree(Path(data['dockerImg']) / filename,  new_image_dir / filename)
+            else:
+                shutil.copy(Path(data['dockerImg']) / filename,  new_image_dir / filename)
     try:
         os.mkdir(new_service_dir)
     except:
@@ -59,12 +73,14 @@ def create_service(data):
                             line
                             .replace("${NAME}", data["name"])
                             .replace("${DESCRIPTION}", data.get('desc', ''))
-                            .replace("${IMAGE}",  data['dockerImg'])
+                            .replace("${IMAGE}", image)
                             .replace("${ICONURL}", data.get('iconURL', DEFAULT_VOILA_ICON_URL))
                         )
     # git
     repo = git.Repo(github_repo_dir)
     repo.index.add(new_service_dir)
+    if data["newImage"]:
+        repo.index.add(new_image_dir)
     repo.index.commit(f"[auto] add {data['name']} service")
     origin = repo.remote(name='origin')
     origin.push()
