@@ -38,11 +38,12 @@ export async function requestAPI<T>(
 
   return data;
 }
-
+const voilaDefaultURL =
+  'https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg';
 export const OnyxiaComponent = (): JSX.Element => {
   const [name, setName] = React.useState<string | undefined>(undefined);
-  const [desc, setDesc] = React.useState<string | undefined>(undefined);
-  const [iconURL, setIconURL] = React.useState<string | undefined>(undefined);
+  const [desc, setDesc] = React.useState<string>('');
+  const [iconURL, setIconURL] = React.useState<string>(voilaDefaultURL);
   const [dockerImg, setDockerImg] = React.useState<string | undefined>(
     undefined
   );
@@ -51,7 +52,6 @@ export const OnyxiaComponent = (): JSX.Element => {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const dataToSend = { name, desc, iconURL, dockerImg };
-    console.log(dataToSend);
     requestAPI<any>('create', {
       body: JSON.stringify(dataToSend),
       method: 'POST'
@@ -85,7 +85,6 @@ export const OnyxiaComponent = (): JSX.Element => {
           Description
           <input
             type="text"
-            required
             size={30}
             onChange={e => setDesc(e.currentTarget.value)}
           />
@@ -95,7 +94,6 @@ export const OnyxiaComponent = (): JSX.Element => {
           Icon Url
           <input
             type="text"
-            required
             size={30}
             onChange={e => setIconURL(e.currentTarget.value)}
           />

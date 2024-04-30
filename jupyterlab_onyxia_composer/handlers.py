@@ -40,7 +40,7 @@ def setup_handlers(web_app):
 
 
 def create_service(data):
-    github_repo_dir = Path.home() / "helm-charts-logilab-services"
+    github_repo_dir = Path.home() / "work"/ "helm-charts-logilab-services"
     voila_template_dir = github_repo_dir / "charts-template" / "voila"
     service_name = data["name"].strip().replace(' ', '_')
     new_service_dir = github_repo_dir / "charts" / service_name
