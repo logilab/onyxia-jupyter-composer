@@ -80,7 +80,7 @@ export const OnyxiaComponent = (): JSX.Element => {
     })
       .then(reply => {
         console.log(reply);
-        setMessage('Service submitted');
+        setMessage(reply['message']);
       })
       .catch(reason => {
         console.error(
@@ -143,7 +143,7 @@ export const OnyxiaComponent = (): JSX.Element => {
         </Form.Group>
         <Form.Control style={submitButtonStyle} type="submit" value="Create" />
       </Form>
-      <section>{message}</section>
+      <div dangerouslySetInnerHTML={{ __html: message }} />
     </div>
   );
 };
