@@ -66,7 +66,8 @@ def create_service(data):
         image = f"{DOCKER_REPO}/{service_name}:latest"
         for filename in os.listdir(data['dockerImg']):
             if os.path.isdir(Path(data['dockerImg']) / filename):
-                shutil.copytree(Path(data['dockerImg']) / filename,  new_image_dir / filename)
+                if filename != '.ipynb_checkpoints':
+                    shutil.copytree(Path(data['dockerImg']) / filename,  new_image_dir / filename)
             else:
                 shutil.copy(Path(data['dockerImg']) / filename,  new_image_dir / filename)
     try:
