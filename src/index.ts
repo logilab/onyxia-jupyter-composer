@@ -7,6 +7,8 @@ import { IMainMenu } from '@jupyterlab/mainmenu';
 import { Menu } from '@lumino/widgets';
 import { OnyxiaWidget } from './onyxiaWidget';
 
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 /**
  * Initialization data
  */

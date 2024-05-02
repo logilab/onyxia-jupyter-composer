@@ -94,4 +94,4 @@ def create_service(data):
         repo.index.add(new_image_dir)
     repo.index.commit(f"[auto] add {data['name']} service")
     origin = repo.remote(name='origin')
-    #origin.push()
+    origin.push()
