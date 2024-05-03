@@ -9,7 +9,7 @@ from jupyter_server.utils import url_path_join
 import tornado
 
 DEFAULT_VOILA_ICON_URL = "https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg"
-DOCKER_REPO = 'djangoliv'
+DOCKER_REPO = 'registry.logilab.fr/open-source/dockerfiles/onyxia'
 
 
 class RouteHandler(APIHandler):
@@ -126,7 +126,10 @@ class Service:
                             )
         # git
         self.git_commit_and_push(service_name, new_service_dir, data["newImage"])
+        repo_url = self.repo.remotes.origin.url
+        if "@" in repo_url:
+            repo_url = f"https://{repo_url.split('@')[-1]}"
         self.message = f"""
         service {service_name} submitted
-        To folow: go to <a target='_blank' href='{self.repo.remotes.origin.url}'>{self.repo.remotes.origin.url}</a>
+        To folow: go to <a target='_blank' href='{repo_url}/actions'>{repo_url}/actions</a>
         """
