@@ -68,6 +68,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [name, setName] = React.useState<string | undefined>(undefined);
   const [desc, setDesc] = React.useState<string>('');
   const [iconURL, setIconURL] = React.useState<string>(voilaDefaultURL);
+  const [notebookName, setNotebookName] = React.useState('index.ipynb');
   const [message, setMessage] = React.useState<string>('');
   const [appType, setAppType] = React.useState<
     'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
@@ -89,6 +90,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       name,
       desc,
       iconURL,
+      notebookName,
       appType,
       appRepoURL,
       appImage,
@@ -166,6 +168,14 @@ export const OnyxiaComponent = (): JSX.Element => {
           <Form.Control
             type="text"
             onChange={e => setIconURL(e.currentTarget.value)}
+          />
+        </Form.Group>
+        <Form.Group className="mb-3">
+          <Form.Label>Notebook name</Form.Label>
+          <Form.Control
+            type="text"
+            value={notebookName}
+            onChange={e => setNotebookName(e.currentTarget.value)}
           />
         </Form.Group>
         <Form.Group className="mb-3">

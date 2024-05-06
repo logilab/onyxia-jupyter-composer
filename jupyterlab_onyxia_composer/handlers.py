@@ -82,7 +82,7 @@ class Service:
                     tag_version.split(".")[:-1] + [new_minor_version]
                 )
 
-    def create_app_from_scratch(self, service_name, app_path):
+    def create_app_from_scratch(self, service_name, app_path, notebook_name):
         """
         Create App from local directory
         """
@@ -92,10 +92,12 @@ class Service:
         except Exception as e:
             self.message = f"Directory {new_image_dir} already exist"
             raise e
-        shutil.copyfile(
-            self.images_dir / "Dockerfile-voila",
-            new_image_dir / "Dockerfile",
-        )
+        with open(self.images_dir / "Dockerfile-voila", "r") as inf:
+            with open(new_image_dir / "Dockerfile", "w") as outf:
+                for line in inf:
+                    outf.write(
+                        line.replace("${NOTEBOOK_NAME}", notebook_name)
+                    )
         image = f"{DOCKER_REPO}/{service_name}:latest"
         for filename in os.listdir(app_path):
             if os.path.isdir(Path(app_path) / filename):
@@ -120,7 +122,7 @@ class Service:
         if data["appType"] == "fromRepo":
             if not APP_DIR.exists():
                 self.repo.clone_from(data["appRepoURL"], APP_DIR)
-            image = self.create_app_from_scratch(service_name, APP_DIR)
+            image = self.create_app_from_scratch(service_name, APP_DIR, data["notebookName"])
         elif data["appType"] == "fromDockerImage":
             # service from existed docker image
             image = data["appImage"]
@@ -139,6 +141,12 @@ class Service:
                 shutil.copytree(
                     self.voila_template_dir / finput, service_repo_dir / finput
                 )
+                with open(self.voila_template_dir / finput / "statefulset.yaml", "r") as inf:
+                    with open(service_repo_dir / finput / "statefulset.yaml", "w") as outf:
+                        for line in inf:
+                            outf.write(
+                                line.replace("${NOTEBOOK_NAME}", data["notebookName"])
+                            )
             else:
                 with open(self.voila_template_dir / finput, "r") as inf:
                     with open(service_repo_dir / finput, "w") as outf:
