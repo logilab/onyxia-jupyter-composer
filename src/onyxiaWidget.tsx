@@ -65,15 +65,30 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [name, setName] = React.useState<string | undefined>(undefined);
   const [desc, setDesc] = React.useState<string>('');
   const [iconURL, setIconURL] = React.useState<string>(voilaDefaultURL);
-  const [dockerImg, setDockerImg] = React.useState<string | undefined>(
-    undefined
-  );
   const [message, setMessage] = React.useState<string>('');
-  const [newImage, setNewImage] = React.useState(false);
+  const [appType, setAppType] = React.useState<
+    'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
+  >('fromRepo');
+  const [appRepo, setAppRepo] = React.useState<string | undefined>(undefined);
+  const [appImage, setAppImage] = React.useState<string | undefined>(undefined);
+  const [appDir, setAppDir] = React.useState<string | undefined>(undefined);
+  const AppTypeLabel = {
+    fromRepo: 'Repo URL',
+    fromDockerImage: 'Docker image name',
+    fromLocalDirectory: 'App path'
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const dataToSend = { name, desc, iconURL, newImage, dockerImg };
+    const dataToSend = {
+      name,
+      desc,
+      iconURL,
+      appType,
+      appRepo,
+      appImage,
+      appDir
+    };
     requestAPI<any>('create', {
       body: JSON.stringify(dataToSend),
       method: 'POST'
@@ -89,12 +104,28 @@ export const OnyxiaComponent = (): JSX.Element => {
       });
   };
 
+  const handleAppType = (value: string) => {
+    switch (appType) {
+      case 'fromRepo':
+        setAppRepo(value);
+        break;
+      case 'fromDockerImage':
+        setAppImage(value);
+        break;
+      case 'fromLocalDirectory':
+        setAppDir(value);
+        break;
+      default:
+        console.error('Not supported service type');
+    }
+  };
+
   return (
     <div>
       <Form onSubmit={handleSubmit} style={formStyle}>
         <h1>Onyxia service Composer</h1>
         <Form.Group className="mb-3">
-          <Form.Label>Name</Form.Label>
+          <Form.Label>Name *</Form.Label>
           <Form.Control
             type="text"
             required
@@ -117,29 +148,39 @@ export const OnyxiaComponent = (): JSX.Element => {
         </Form.Group>
         <Form.Group className="mb-3">
           <h2>Docker image</h2>
-          <Form.Check
-            type="switch"
-            onChange={() => setNewImage(!newImage)}
-            label={'New app'}
-          />
-          {!newImage ? (
-            <Form.Group className="mb-3">
-              <Form.Label>Name of docker image</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                onChange={e => setDockerImg(e.currentTarget.value)}
-              />
-            </Form.Group>
-          ) : (
-            <Form.Group className="mb-3">
-              <Form.Label>Select your app directory</Form.Label>
-              <Form.Control
-                type="text"
-                onChange={e => setDockerImg(e.currentTarget.value)}
-              />
-            </Form.Group>
-          )}
+          <Form.Label>Build App :</Form.Label>
+          <Form.Group className="mb-3">
+            <Form.Check
+              inline
+              type="radio"
+              defaultChecked
+              name="appType"
+              label="from Repo"
+              onChange={() => setAppType('fromRepo')}
+            />
+            <Form.Check
+              inline
+              type="radio"
+              name="appType"
+              label="from Docker Image"
+              onChange={() => setAppType('fromDockerImage')}
+            />
+            <Form.Check
+              inline
+              type="radio"
+              name="appType"
+              label="from Directory"
+              onChange={() => setAppType('fromLocalDirectory')}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>{AppTypeLabel[appType]} *</Form.Label>
+            <Form.Control
+              type="text"
+              required
+              onChange={e => handleAppType(e.currentTarget.value)}
+            />
+          </Form.Group>
         </Form.Group>
         <Form.Control style={submitButtonStyle} type="submit" value="Create" />
       </Form>
