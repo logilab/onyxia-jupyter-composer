@@ -1,5 +1,8 @@
 import React from 'react';
 import Form from 'react-bootstrap/Form';
+import Col from 'react-bootstrap/Col';
+import Row from 'react-bootstrap/Row';
+import Button from 'react-bootstrap/Button';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -54,7 +57,7 @@ const formStyle = {
 
 const submitButtonStyle = {
   marginTop: '2em',
-  backgroundColor: '#28a745', // React Bootstrap success color
+  backgroundColor: '#28a745',
   border: 'none',
   borderRadius: '5px',
   cursor: 'pointer',
@@ -69,7 +72,9 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [appType, setAppType] = React.useState<
     'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
   >('fromRepo');
-  const [appRepo, setAppRepo] = React.useState<string | undefined>(undefined);
+  const [appRepoURL, setAppRepoURL] = React.useState<string | undefined>(
+    undefined
+  );
   const [appImage, setAppImage] = React.useState<string | undefined>(undefined);
   const [appDir, setAppDir] = React.useState<string | undefined>(undefined);
   const AppTypeLabel = {
@@ -85,7 +90,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       desc,
       iconURL,
       appType,
-      appRepo,
+      appRepoURL,
       appImage,
       appDir
     };
@@ -107,7 +112,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const handleAppType = (value: string) => {
     switch (appType) {
       case 'fromRepo':
-        setAppRepo(value);
+        setAppRepoURL(value);
         break;
       case 'fromDockerImage':
         setAppImage(value);
@@ -118,6 +123,23 @@ export const OnyxiaComponent = (): JSX.Element => {
       default:
         console.error('Not supported service type');
     }
+  };
+
+  const cloneApp = () => {
+    console.log('clone');
+    requestAPI<any>('clone', {
+      body: JSON.stringify(appRepoURL),
+      method: 'POST'
+    })
+      .then(reply => {
+        console.log(reply);
+        setMessage(reply['message']);
+      })
+      .catch(reason => {
+        console.error(
+          `Error on POST /jupyterlab-onyxia-composer/clone ${appRepoURL}.\n${reason}`
+        );
+      });
   };
 
   return (
@@ -175,11 +197,26 @@ export const OnyxiaComponent = (): JSX.Element => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>{AppTypeLabel[appType]} *</Form.Label>
-            <Form.Control
-              type="text"
-              required
-              onChange={e => handleAppType(e.currentTarget.value)}
-            />
+            <Row>
+              <Col xs={9}>
+                <Form.Control
+                  type="text"
+                  required
+                  onChange={e => handleAppType(e.currentTarget.value)}
+                />
+              </Col>
+              {appType === 'fromRepo' && (
+                <Col>
+                  <Button
+                    variant="light"
+                    disabled={appRepoURL === undefined}
+                    onClick={cloneApp}
+                  >
+                    Clone
+                  </Button>
+                </Col>
+              )}
+            </Row>
           </Form.Group>
         </Form.Group>
         <Form.Control style={submitButtonStyle} type="submit" value="Create" />
