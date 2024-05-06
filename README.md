@@ -1,6 +1,5 @@
 # jupyterlab_onyxia_composer
 
-[![Github Actions Status](/workflows/Build/badge.svg)](/actions/workflows/build.yml)
 A JupyterLab extension for generate onyxia app
 
 This extension is composed of a Python package named `jupyterlab_onyxia_composer`
