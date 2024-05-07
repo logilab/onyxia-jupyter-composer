@@ -28,8 +28,8 @@ const extension: JupyterFrontEndPlugin<void> = {
     // Add command
     const command = 'jupyterlab-onyxia-composer:generate';
     commands.addCommand(command, {
-      label: 'Generate onyxia Helm Chart',
-      caption: 'Generate onyxia Helm Chart',
+      label: 'Service composer',
+      caption: 'Service composer',
       execute: () => {
         const content = new OnyxiaWidget();
         const widget = new MainAreaWidget<OnyxiaWidget>({ content });

@@ -3,6 +3,8 @@ import Form from 'react-bootstrap/Form';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Button from 'react-bootstrap/Button';
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -65,6 +67,7 @@ const submitButtonStyle = {
 };
 
 export const OnyxiaComponent = (): JSX.Element => {
+  const [tabKey, setTabKey] = React.useState('create');
   const [name, setName] = React.useState<string | undefined>(undefined);
   const [desc, setDesc] = React.useState<string>('');
   const [iconURL, setIconURL] = React.useState<string>(voilaDefaultURL);
@@ -128,7 +131,6 @@ export const OnyxiaComponent = (): JSX.Element => {
   };
 
   const cloneApp = () => {
-    console.log('clone');
     requestAPI<any>('clone', {
       body: JSON.stringify(appRepoURL),
       method: 'POST'
@@ -146,93 +148,117 @@ export const OnyxiaComponent = (): JSX.Element => {
 
   return (
     <div>
-      <Form onSubmit={handleSubmit} style={formStyle}>
-        <h1>Onyxia service Composer</h1>
-        <Form.Group className="mb-3">
-          <Form.Label>Name *</Form.Label>
-          <Form.Control
-            type="text"
-            required
-            onChange={e => setName(e.currentTarget.value)}
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Description</Form.Label>
-          <Form.Control
-            type="text"
-            onChange={e => setDesc(e.currentTarget.value)}
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Icon Url</Form.Label>
-          <Form.Control
-            type="text"
-            onChange={e => setIconURL(e.currentTarget.value)}
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Notebook name</Form.Label>
-          <Form.Control
-            type="text"
-            value={notebookName}
-            onChange={e => setNotebookName(e.currentTarget.value)}
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <h2>Docker image</h2>
-          <Form.Label>Build App :</Form.Label>
-          <Form.Group className="mb-3">
-            <Form.Check
-              inline
-              type="radio"
-              defaultChecked
-              name="appType"
-              label="from Repo"
-              onChange={() => setAppType('fromRepo')}
-            />
-            <Form.Check
-              inline
-              type="radio"
-              name="appType"
-              label="from Docker Image"
-              onChange={() => setAppType('fromDockerImage')}
-            />
-            <Form.Check
-              inline
-              type="radio"
-              name="appType"
-              label="from Directory"
-              onChange={() => setAppType('fromLocalDirectory')}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label>{AppTypeLabel[appType]} *</Form.Label>
-            <Row>
-              <Col xs={9}>
+      <h1 className="mb-3">Onyxia service Composer</h1>
+      <Tabs
+        id="tabs"
+        activeKey={tabKey}
+        onSelect={k => setTabKey(k || '')}
+        className="mb-3"
+      >
+        <Tab eventKey="create" title="Create Service">
+          <Form onSubmit={handleSubmit} style={formStyle}>
+            <h2>Service</h2>
+            <Form.Group className="mb-3">
+              <Form.Label>Name *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                onChange={e => setName(e.currentTarget.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                type="text"
+                onChange={e => setDesc(e.currentTarget.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Icon Url</Form.Label>
+              <Form.Control
+                type="text"
+                onChange={e => setIconURL(e.currentTarget.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <h2>Docker image</h2>
+              <Form.Label>Build App :</Form.Label>
+              <Form.Group className="mb-3">
+                <Form.Check
+                  inline
+                  type="radio"
+                  defaultChecked
+                  name="appType"
+                  label="from Repo"
+                  onChange={() => setAppType('fromRepo')}
+                />
+                <Form.Check
+                  inline
+                  type="radio"
+                  name="appType"
+                  label="from Docker Image"
+                  onChange={() => setAppType('fromDockerImage')}
+                />
+                <Form.Check
+                  inline
+                  type="radio"
+                  name="appType"
+                  label="from Directory"
+                  onChange={() => setAppType('fromLocalDirectory')}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>{AppTypeLabel[appType]} *</Form.Label>
+                <Row>
+                  <Col xs={9}>
+                    <Form.Control
+                      type="text"
+                      required
+                      onChange={e => handleAppType(e.currentTarget.value)}
+                    />
+                  </Col>
+                  {appType === 'fromRepo' && (
+                    <Col>
+                      <Button
+                        variant="light"
+                        disabled={appRepoURL === undefined}
+                        onClick={cloneApp}
+                      >
+                        Clone
+                      </Button>
+                    </Col>
+                  )}
+                </Row>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Notebook name</Form.Label>
                 <Form.Control
                   type="text"
-                  required
-                  onChange={e => handleAppType(e.currentTarget.value)}
+                  value={notebookName}
+                  onChange={e => setNotebookName(e.currentTarget.value)}
                 />
-              </Col>
-              {appType === 'fromRepo' && (
-                <Col>
-                  <Button
-                    variant="light"
-                    disabled={appRepoURL === undefined}
-                    onClick={cloneApp}
-                  >
-                    Clone
-                  </Button>
-                </Col>
-              )}
-            </Row>
-          </Form.Group>
-        </Form.Group>
-        <Form.Control style={submitButtonStyle} type="submit" value="Create" />
-      </Form>
-      <div dangerouslySetInnerHTML={{ __html: message }} />
+              </Form.Group>
+            </Form.Group>
+            <Form.Control
+              style={submitButtonStyle}
+              type="submit"
+              value="Create"
+            />
+          </Form>
+          <div dangerouslySetInnerHTML={{ __html: message }} />
+        </Tab>
+        <Tab eventKey="handle" title="Handle services"></Tab>
+        <ListeService />
+      </Tabs>
     </div>
+  );
+};
+
+export const ListeService = (): JSX.Element => {
+  return (
+    <ul>
+      <li>kjhkjh</li>
+    </ul>
   );
 };
 

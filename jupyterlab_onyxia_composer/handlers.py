@@ -116,7 +116,7 @@ class Service:
         origin.push()
 
     def create_service(self, data):
-        service_name = data["name"].strip().replace(" ", "_")
+        service_name = data["name"].strip().replace(" ", "_").lower()
         service_repo_dir = self.repo_charts_dir / service_name
         self.set_service_version(service_name)
         if data["appType"] == "fromRepo":
