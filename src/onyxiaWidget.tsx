@@ -93,6 +93,7 @@ export const OnyxiaComponent = (): JSX.Element => {
     fromDockerImage: 'Docker image name',
     fromLocalDirectory: 'App path'
   };
+  const [version, setVersion] = React.useState<string>('0.0.1');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -137,6 +138,24 @@ export const OnyxiaComponent = (): JSX.Element => {
     }
   };
 
+  const handleServiceName = (name: string) => {
+    setName(name);
+    requestAPI<any>('check', {
+      body: JSON.stringify(name),
+      method: 'POST'
+    })
+      .then(reply => {
+        console.log(reply);
+        setVersion(reply['version']);
+        setMessage(reply['message']);
+      })
+      .catch(reason => {
+        console.error(
+          `Error on POST /jupyterlab-onyxia-composer/clone ${appRepoURL}.\n${reason}`
+        );
+      });
+  };
+
   const cloneApp = () => {
     requestAPI<any>('clone', {
       body: JSON.stringify(appRepoURL),
@@ -172,12 +191,25 @@ export const OnyxiaComponent = (): JSX.Element => {
           <Form onSubmit={handleSubmit} style={formStyle}>
             <h2>Service</h2>
             <Form.Group className="mb-3">
-              <Form.Label>Name *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                onChange={e => setName(e.currentTarget.value)}
-              />
+              <Row>
+                <Col xs={9}>
+                  <Form.Label>Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    required
+                    onChange={e => handleServiceName(e.currentTarget.value)}
+                  />
+                </Col>
+                <Col>
+                  <Form.Label>Version *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={version}
+                    required
+                    onChange={e => setVersion(e.currentTarget.value)}
+                  />
+                </Col>
+              </Row>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Description</Form.Label>

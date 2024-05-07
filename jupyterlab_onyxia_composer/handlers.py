@@ -34,6 +34,26 @@ class CreateServiceHandler(APIHandler):
         self.finish(json.dumps(data))
 
 
+class CheckServiceExist(APIHandler):
+
+    @tornado.web.authenticated
+    def post(self):
+        # input_data is a dictionary with a key "name"
+        github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
+        repo = git.Repo(github_repo_dir)
+        service = self.get_json_body()
+        version = "0.0.1"
+        message = ""
+        if (github_repo_dir / "charts" / service).exists():
+            message = f"{service} alread exists, please remove it or choose another name"
+        for serv in os.listdir(github_repo_dir / "charts"):
+            for tag in repo.tags:
+                if service in tag.name:
+                    version = tag.name.split("-")[-1]
+        data = {"message": message, "version": version}
+        self.finish(json.dumps(data))
+
+        
 class CloneAppHandler(APIHandler):
 
     @tornado.web.authenticated
@@ -106,11 +126,13 @@ def setup_handlers(web_app):
     clone_app_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "clone")
     list_services_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "services")
     delete_service_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "delete")
+    check_service_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "check")
     handlers = [
         (create_service_pattern, CreateServiceHandler),
         (clone_app_pattern, CloneAppHandler),
         (list_services_pattern, ListServiceHandler),
         (delete_service_pattern, DeleteServiceHandler),
+        (check_service_pattern, CheckServiceExist),
     ]
     web_app.add_handlers(host_pattern, handlers)
 
