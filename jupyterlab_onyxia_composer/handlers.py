@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import os
 import shutil
+import yaml
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
@@ -44,6 +45,57 @@ class CloneAppHandler(APIHandler):
         self.finish(json.dumps(data))
 
 
+class ListServiceHandler(APIHandler):
+
+    @tornado.web.authenticated
+    def post(self):
+        github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
+        repo = git.Repo(github_repo_dir)
+        origin = repo.remote(name="origin")
+        repo.git.checkout('main')
+        origin.pull()
+        services = {}
+        for serv in os.listdir(github_repo_dir / "charts"):
+            for tag in repo.tags:
+                if serv in tag.name:
+                    services[serv] = tag.name
+        data = {"services": services}
+        self.finish(json.dumps(data))
+
+
+class DeleteServiceHandler(APIHandler):
+
+    @tornado.web.authenticated
+    def post(self):
+        input_data = self.get_json_body()
+        github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
+        repo = git.Repo(github_repo_dir)
+        origin = repo.remote(name="origin")
+        origin.pull()
+        service = input_data['service']
+        message = f"service {service} deleted"
+        #repo.index.remove([github_repo_dir / 'charts' / service], working_tree = True)
+        repo.git.rm(github_repo_dir / 'charts' / service, r=True)
+        if (github_repo_dir / 'images' / service).exists():
+            repo.git.rm(github_repo_dir / 'images' / service, r=True)
+        repo.git.commit('-m', f'[auto] remove service {service}')
+        origin.push()
+        repo.git.checkout('gh-pages')
+        origin.pull()
+        with open(github_repo_dir / "index.yaml") as f:
+            index_file = yaml.safe_load(f)
+        if service in index_file['entries']:
+            index_file['entries'].pop(service)
+            with open(github_repo_dir / "index.yaml", 'w') as f:
+                yaml.safe_dump(index_file, f)
+            repo.git.add(github_repo_dir / "index.yaml")
+            repo.git.commit('-m', f'[auto] remove service {service}')
+            origin.push()
+        repo.git.checkout('main')
+        data = {"message": message}
+        self.finish(json.dumps(data))
+
+
 def setup_handlers(web_app):
     host_pattern = ".*$"
     base_url = web_app.settings["base_url"]
@@ -52,9 +104,13 @@ def setup_handlers(web_app):
         base_url, "jupyterlab-onyxia-composer", "create"
     )
     clone_app_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "clone")
+    list_services_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "services")
+    delete_service_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "delete")
     handlers = [
         (create_service_pattern, CreateServiceHandler),
         (clone_app_pattern, CloneAppHandler),
+        (list_services_pattern, ListServiceHandler),
+        (delete_service_pattern, DeleteServiceHandler),
     ]
     web_app.add_handlers(host_pattern, handlers)
 
