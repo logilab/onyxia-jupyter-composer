@@ -5,6 +5,8 @@ import Row from 'react-bootstrap/Row';
 import Button from 'react-bootstrap/Button';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
+import Image from 'react-bootstrap/Image';
+import Table from 'react-bootstrap/Table';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -64,6 +66,11 @@ const submitButtonStyle = {
   borderRadius: '5px',
   cursor: 'pointer',
   width: '100px'
+};
+
+const TitleStyle = {
+  fontSize: '5em',
+  color: '#ff562c'
 };
 
 export const OnyxiaComponent = (): JSX.Element => {
@@ -148,7 +155,13 @@ export const OnyxiaComponent = (): JSX.Element => {
 
   return (
     <div>
-      <h1 className="mb-3">Onyxia service Composer</h1>
+      <h1 className="mb-3 text-center fw-bold" style={TitleStyle}>
+        <Image
+          src="https://www.onyxia.sh/static/media/Dragoon.8d89504cc3a892bf56ee9e7412df7d43.svg"
+          style={{ height: '1em' }}
+        />
+        nyxia Service Composer
+      </h1>
       <Tabs
         id="tabs"
         activeKey={tabKey}
@@ -247,18 +260,80 @@ export const OnyxiaComponent = (): JSX.Element => {
           </Form>
           <div dangerouslySetInnerHTML={{ __html: message }} />
         </Tab>
-        <Tab eventKey="handle" title="Handle services"></Tab>
-        <ListeService />
+        <Tab eventKey="handle" title="Handle services">
+          <ListeServices reload={tabKey} />
+        </Tab>
       </Tabs>
     </div>
   );
 };
 
-export const ListeService = (): JSX.Element => {
+const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
+  const [services, setServices] = React.useState([]);
+  const [message, setMessage] = React.useState('');
+
+  React.useEffect(() => {
+    requestAPI<any>('services', {
+      method: 'POST'
+    })
+      .then(reply => {
+        setServices(reply['services']);
+      })
+      .catch(reason => {
+        console.error(
+          `Error on POST /jupyterlab-onyxia-composer/services.\n${reason}`
+        );
+      });
+    setMessage('');
+  }, [reload]);
+
+  const deleteService = (servName: string) => {
+    requestAPI<any>('delete', {
+      body: JSON.stringify({ service: servName }),
+      method: 'POST'
+    })
+      .then(reply => {
+        setMessage(reply['message']);
+      })
+      .catch(reason => {
+        console.error(
+          `Error on POST /jupyterlab-onyxia-composer/delete.\n${reason}`
+        );
+      });
+  };
+
   return (
-    <ul>
-      <li>kjhkjh</li>
-    </ul>
+    <div className="Container">
+      <h1>Services</h1>
+      <Table bordered size="sm">
+        <thead>
+          <tr>
+            <th>Service Name</th>
+            <th>Last Tag</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(services).map(([serviceName, serviceTag]) => (
+            <tr>
+              <td>{serviceName}</td>
+              <td>{serviceTag}</td>
+              <td>
+                {serviceName !== 'jupyter-composer' && (
+                  <Button
+                    variant="light"
+                    onClick={() => deleteService(serviceName)}
+                  >
+                    <i className="fa fa-trash"></i>
+                  </Button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+      <p>{message}</p>
+    </div>
   );
 };
 
