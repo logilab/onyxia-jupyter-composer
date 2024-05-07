@@ -7,6 +7,7 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 import Image from 'react-bootstrap/Image';
 import Table from 'react-bootstrap/Table';
+import Alert from 'react-bootstrap/Alert';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -51,7 +52,7 @@ const voilaDefaultURL =
   'https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg';
 
 const formStyle = {
-  maxWidth: '600px',
+  maxWidth: '700px',
   margin: '20px auto',
   padding: '20px',
   border: '1px solid #ddd',
@@ -80,6 +81,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [iconURL, setIconURL] = React.useState<string>(voilaDefaultURL);
   const [notebookName, setNotebookName] = React.useState('index.ipynb');
   const [message, setMessage] = React.useState<string>('');
+  const [showMessage, setShowMessage] = React.useState(false);
   const [appType, setAppType] = React.useState<
     'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
   >('fromRepo');
@@ -112,8 +114,8 @@ export const OnyxiaComponent = (): JSX.Element => {
       method: 'POST'
     })
       .then(reply => {
-        console.log(reply);
         setMessage(reply['message']);
+        setShowMessage(true);
       })
       .catch(reason => {
         console.error(
@@ -140,18 +142,45 @@ export const OnyxiaComponent = (): JSX.Element => {
 
   const handleServiceName = (name: string) => {
     setName(name);
-    requestAPI<any>('check', {
+    requestAPI<any>('checkSrvName', {
       body: JSON.stringify(name),
       method: 'POST'
     })
       .then(reply => {
-        console.log(reply);
         setVersion(reply['version']);
-        setMessage(reply['message']);
+        const msg = reply['message'];
+        if (msg) {
+          setMessage(msg);
+          setShowMessage(true);
+        } else {
+          setShowMessage(false);
+        }
       })
       .catch(reason => {
         console.error(
-          `Error on POST /jupyterlab-onyxia-composer/clone ${appRepoURL}.\n${reason}`
+          `Error on POST /jupyterlab-onyxia-composer/checkSrvName ${appRepoURL}.\n${reason}`
+        );
+      });
+  };
+
+  const handleServiceVersion = (inputVersion: string) => {
+    setVersion(inputVersion);
+    requestAPI<any>('checkSrvVersion', {
+      body: JSON.stringify({ name, version: inputVersion }),
+      method: 'POST'
+    })
+      .then(reply => {
+        const msg = reply['message'];
+        if (msg) {
+          setMessage(msg);
+          setShowMessage(true);
+        } else {
+          setShowMessage(false);
+        }
+      })
+      .catch(reason => {
+        console.error(
+          `Error on POST /jupyterlab-onyxia-composer/checkSrvVersion ${appRepoURL}.\n${reason}`
         );
       });
   };
@@ -162,8 +191,8 @@ export const OnyxiaComponent = (): JSX.Element => {
       method: 'POST'
     })
       .then(reply => {
-        console.log(reply);
         setMessage(reply['message']);
+        setShowMessage(true);
       })
       .catch(reason => {
         console.error(
@@ -173,7 +202,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   };
 
   return (
-    <div>
+    <div className="container">
       <h1 className="mb-3 text-center fw-bold" style={TitleStyle}>
         <Image
           src="https://www.onyxia.sh/static/media/Dragoon.8d89504cc3a892bf56ee9e7412df7d43.svg"
@@ -206,7 +235,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                     type="text"
                     value={version}
                     required
-                    onChange={e => setVersion(e.currentTarget.value)}
+                    onChange={e => handleServiceVersion(e.currentTarget.value)}
                   />
                 </Col>
               </Row>
@@ -290,7 +319,15 @@ export const OnyxiaComponent = (): JSX.Element => {
               value="Create"
             />
           </Form>
-          <div dangerouslySetInnerHTML={{ __html: message }} />
+          {showMessage && (
+            <Alert
+              variant="info"
+              onClose={() => setShowMessage(false)}
+              dismissible
+            >
+              <div dangerouslySetInnerHTML={{ __html: message }} />
+            </Alert>
+          )}
         </Tab>
         <Tab eventKey="handle" title="Handle services">
           <ListeServices reload={tabKey} />
@@ -303,7 +340,7 @@ export const OnyxiaComponent = (): JSX.Element => {
 const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
   const [services, setServices] = React.useState([]);
   const [message, setMessage] = React.useState('');
-
+  const [showMessage, setShowMessage] = React.useState(false);
   React.useEffect(() => {
     requestAPI<any>('services', {
       method: 'POST'
@@ -316,6 +353,7 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
           `Error on POST /jupyterlab-onyxia-composer/services.\n${reason}`
         );
       });
+    setShowMessage(false);
     setMessage('');
   }, [reload]);
 
@@ -326,6 +364,7 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
     })
       .then(reply => {
         setMessage(reply['message']);
+        setShowMessage(true);
       })
       .catch(reason => {
         console.error(
@@ -335,8 +374,7 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
   };
 
   return (
-    <div className="Container">
-      <h1>Services</h1>
+    <div className="container" style={{ margin: '1em' }}>
       <Table bordered size="sm">
         <thead>
           <tr>
@@ -354,6 +392,7 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
                 {serviceName !== 'jupyter-composer' && (
                   <Button
                     variant="light"
+                    size="sm"
                     onClick={() => deleteService(serviceName)}
                   >
                     <i className="fa fa-trash"></i>
@@ -364,7 +403,11 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
           ))}
         </tbody>
       </Table>
-      <p>{message}</p>
+      {showMessage && (
+        <Alert variant="info" onClose={() => setShowMessage(false)} dismissible>
+          {message}
+        </Alert>
+      )}
     </div>
   );
 };

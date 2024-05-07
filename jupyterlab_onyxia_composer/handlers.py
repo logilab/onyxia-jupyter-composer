@@ -45,15 +45,35 @@ class CheckServiceExist(APIHandler):
         version = "0.0.1"
         message = ""
         if (github_repo_dir / "charts" / service).exists():
-            message = f"{service} alread exists, please remove it or choose another name"
+            message = f"WARNING: {service} already exists, It will be updated"
         for serv in os.listdir(github_repo_dir / "charts"):
             for tag in repo.tags:
                 if service in tag.name:
-                    version = tag.name.split("-")[-1]
+                    current_version = tag.name.split("-")[-1]
+                    last_number = int(current_version.split(".")[-1])
+                    version = ".".join(current_version.split(".")[:-1] + [str(last_number + 1)])
         data = {"message": message, "version": version}
         self.finish(json.dumps(data))
 
-        
+
+class CheckServiceVersion(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
+        repo = git.Repo(github_repo_dir)
+        input_data = self.get_json_body()
+        version = input_data["version"]
+        service_name = input_data["name"]
+        message = ""
+        if (github_repo_dir / "charts" / service_name).exists():
+            for tag in repo.tags:
+                if service_name in tag.name:
+                    if tag.name.split("-")[-1] == version:
+                        message = "This version already exist, choose another one"
+                        break
+        self.finish(json.dumps({"message": message}))
+
+
 class CloneAppHandler(APIHandler):
 
     @tornado.web.authenticated
@@ -72,7 +92,7 @@ class ListServiceHandler(APIHandler):
         github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
         repo = git.Repo(github_repo_dir)
         origin = repo.remote(name="origin")
-        repo.git.checkout('main')
+        repo.git.checkout("main")
         origin.pull()
         services = {}
         for serv in os.listdir(github_repo_dir / "charts"):
@@ -92,26 +112,25 @@ class DeleteServiceHandler(APIHandler):
         repo = git.Repo(github_repo_dir)
         origin = repo.remote(name="origin")
         origin.pull()
-        service = input_data['service']
+        service = input_data["service"]
         message = f"service {service} deleted"
-        #repo.index.remove([github_repo_dir / 'charts' / service], working_tree = True)
-        repo.git.rm(github_repo_dir / 'charts' / service, r=True)
-        if (github_repo_dir / 'images' / service).exists():
-            repo.git.rm(github_repo_dir / 'images' / service, r=True)
-        repo.git.commit('-m', f'[auto] remove service {service}')
+        repo.git.rm(github_repo_dir / "charts" / service, r=True)
+        if (github_repo_dir / "images" / service).exists():
+            repo.git.rm(github_repo_dir / "images" / service, r=True)
+        repo.git.commit("-m", f"[auto] remove service {service}")
         origin.push()
-        repo.git.checkout('gh-pages')
+        repo.git.checkout("gh-pages")
         origin.pull()
         with open(github_repo_dir / "index.yaml") as f:
             index_file = yaml.safe_load(f)
-        if service in index_file['entries']:
-            index_file['entries'].pop(service)
-            with open(github_repo_dir / "index.yaml", 'w') as f:
+        if service in index_file["entries"]:
+            index_file["entries"].pop(service)
+            with open(github_repo_dir / "index.yaml", "w") as f:
                 yaml.safe_dump(index_file, f)
             repo.git.add(github_repo_dir / "index.yaml")
-            repo.git.commit('-m', f'[auto] remove service {service}')
+            repo.git.commit("-m", f"[auto] remove service {service}")
             origin.push()
-        repo.git.checkout('main')
+        repo.git.checkout("main")
         data = {"message": message}
         self.finish(json.dumps(data))
 
@@ -124,15 +143,25 @@ def setup_handlers(web_app):
         base_url, "jupyterlab-onyxia-composer", "create"
     )
     clone_app_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "clone")
-    list_services_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "services")
-    delete_service_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "delete")
-    check_service_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "check")
+    list_services_pattern = url_path_join(
+        base_url, "jupyterlab-onyxia-composer", "services"
+    )
+    delete_service_pattern = url_path_join(
+        base_url, "jupyterlab-onyxia-composer", "delete"
+    )
+    check_srv_name_pattern = url_path_join(
+        base_url, "jupyterlab-onyxia-composer", "checkSrvName"
+    )
+    check_srv_version_pattern = url_path_join(
+        base_url, "jupyterlab-onyxia-composer", "checkSrvVersion"
+    )
     handlers = [
         (create_service_pattern, CreateServiceHandler),
         (clone_app_pattern, CloneAppHandler),
         (list_services_pattern, ListServiceHandler),
         (delete_service_pattern, DeleteServiceHandler),
-        (check_service_pattern, CheckServiceExist),
+        (check_srv_name_pattern, CheckServiceExist),
+        (check_srv_version_pattern, CheckServiceVersion),
     ]
     web_app.add_handlers(host_pattern, handlers)
 
@@ -148,18 +177,6 @@ class Service:
         self.repo = git.Repo(github_repo_dir)
         self.message = ""
 
-    def set_service_version(self, service_name):
-        """
-        if service existe, add 1 to minor version
-        """
-        for tag in self.repo.tags:
-            if service_name in tag.name:
-                tag_version = tag.name.split("-")[-1]
-                new_minor_version = str(int(tag_version.split(".")[-1]) + 1)
-                self.service_version = ".".join(
-                    tag_version.split(".")[:-1] + [new_minor_version]
-                )
-
     def create_app_from_scratch(self, service_name, app_path, notebook_name):
         """
         Create App from local directory
@@ -173,9 +190,7 @@ class Service:
         with open(self.images_dir / "Dockerfile-voila", "r") as inf:
             with open(new_image_dir / "Dockerfile", "w") as outf:
                 for line in inf:
-                    outf.write(
-                        line.replace("${NOTEBOOK_NAME}", notebook_name)
-                    )
+                    outf.write(line.replace("${NOTEBOOK_NAME}", notebook_name))
         image = f"{DOCKER_REPO}/{service_name}:latest"
         for filename in os.listdir(app_path):
             if os.path.isdir(Path(app_path) / filename):
@@ -196,11 +211,13 @@ class Service:
     def create_service(self, data):
         service_name = data["name"].strip().replace(" ", "_").lower()
         service_repo_dir = self.repo_charts_dir / service_name
-        self.set_service_version(service_name)
+        self.service_version = data["version"]
         if data["appType"] == "fromRepo":
             if not APP_DIR.exists():
                 self.repo.clone_from(data["appRepoURL"], APP_DIR)
-            image = self.create_app_from_scratch(service_name, APP_DIR, data["notebookName"])
+            image = self.create_app_from_scratch(
+                service_name, APP_DIR, data["notebookName"]
+            )
         elif data["appType"] == "fromDockerImage":
             # service from existed docker image
             image = data["appImage"]
@@ -219,8 +236,12 @@ class Service:
                 shutil.copytree(
                     self.voila_template_dir / finput, service_repo_dir / finput
                 )
-                with open(self.voila_template_dir / finput / "statefulset.yaml", "r") as inf:
-                    with open(service_repo_dir / finput / "statefulset.yaml", "w") as outf:
+                with open(
+                    self.voila_template_dir / finput / "statefulset.yaml", "r"
+                ) as inf:
+                    with open(
+                        service_repo_dir / finput / "statefulset.yaml", "w"
+                    ) as outf:
                         for line in inf:
                             outf.write(
                                 line.replace("${NOTEBOOK_NAME}", data["notebookName"])
