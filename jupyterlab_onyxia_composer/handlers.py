@@ -198,10 +198,7 @@ class Service:
         except Exception as e:
             self.message = f"Directory {new_image_dir} already exist"
             raise e
-        with open(self.images_dir / "Dockerfile-voila", "r") as inf:
-            with open(new_image_dir / "Dockerfile", "w") as outf:
-                for line in inf:
-                    outf.write(line.replace("${NOTEBOOK_NAME}", notebook_name))
+        shutil.copyfile(self.images_dir / "Dockerfile-voila", new_image_dir / "Dockerfile")
         image = f"{DOCKER_REPO}/{service_name}:latest"
         for filename in os.listdir(app_path):
             if os.path.isdir(Path(app_path) / filename):
