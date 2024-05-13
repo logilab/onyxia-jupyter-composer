@@ -27,7 +27,6 @@ class CreateServiceHandler(APIHandler):
             service.create_service(input_data)
             message = service.message
         except Exception as e:
-            print(e)
             message = str(e)
             pass
         data = {"message": message}
@@ -46,12 +45,16 @@ class CheckServiceExist(APIHandler):
         message = ""
         if (github_repo_dir / "charts" / service).exists():
             message = f"WARNING: {service} already exists, It will be updated"
+        elif service.lower() != service:
+            message = f"WARNING: We do not support capital letters in the service name"
         for serv in os.listdir(github_repo_dir / "charts"):
             for tag in repo.tags:
-                if service in tag.name:
+                if service == "-".join(tag.name.split("-")[:-1]):
                     current_version = tag.name.split("-")[-1]
                     last_number = int(current_version.split(".")[-1])
-                    version = ".".join(current_version.split(".")[:-1] + [str(last_number + 1)])
+                    version = ".".join(
+                        current_version.split(".")[:-1] + [str(last_number + 1)]
+                    )
         data = {"message": message, "version": version}
         self.finish(json.dumps(data))
 
@@ -67,7 +70,7 @@ class CheckServiceVersion(APIHandler):
         message = ""
         if (github_repo_dir / "charts" / service_name).exists():
             for tag in repo.tags:
-                if service_name in tag.name:
+                if service_name == "-".join(tag.name.split("-")[:-1]):
                     if tag.name.split("-")[-1] == version:
                         message = "This version already exist, choose another one"
                         break
@@ -97,10 +100,35 @@ class ListServiceHandler(APIHandler):
         services = {}
         for serv in os.listdir(github_repo_dir / "charts"):
             for tag in repo.tags:
-                if serv in tag.name:
+                if serv == "-".join(tag.name.split("-")[:-1]).lower():
                     services[serv] = tag.name
+
         data = {"services": services}
         self.finish(json.dumps(data))
+
+
+def delete_service(service_name):
+    github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
+    repo = git.Repo(github_repo_dir)
+    origin = repo.remote(name="origin")
+    origin.pull()
+    repo.git.rm(github_repo_dir / "charts" / service_name, r=True)
+    if (github_repo_dir / "images" / service_name).exists():
+        repo.git.rm(github_repo_dir / "images" / service_name, r=True)
+    repo.git.commit("-m", f"[auto] remove service {service_name}")
+    origin.push()
+    repo.git.checkout("gh-pages")
+    origin.pull()
+    with open(github_repo_dir / "index.yaml") as f:
+        index_file = yaml.safe_load(f)
+    if service_name in index_file["entries"]:
+        index_file["entries"].pop(service_name)
+        with open(github_repo_dir / "index.yaml", "w") as f:
+            yaml.safe_dump(index_file, f)
+        repo.git.add(github_repo_dir / "index.yaml")
+        repo.git.commit("-m", f"[auto] remove service {service_name}")
+        origin.push()
+    repo.git.checkout("main")
 
 
 class DeleteServiceHandler(APIHandler):
@@ -108,29 +136,12 @@ class DeleteServiceHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
         input_data = self.get_json_body()
-        github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
-        repo = git.Repo(github_repo_dir)
-        origin = repo.remote(name="origin")
-        origin.pull()
-        service = input_data["service"]
-        message = f"service {service} deleted"
-        repo.git.rm(github_repo_dir / "charts" / service, r=True)
-        if (github_repo_dir / "images" / service).exists():
-            repo.git.rm(github_repo_dir / "images" / service, r=True)
-        repo.git.commit("-m", f"[auto] remove service {service}")
-        origin.push()
-        repo.git.checkout("gh-pages")
-        origin.pull()
-        with open(github_repo_dir / "index.yaml") as f:
-            index_file = yaml.safe_load(f)
-        if service in index_file["entries"]:
-            index_file["entries"].pop(service)
-            with open(github_repo_dir / "index.yaml", "w") as f:
-                yaml.safe_dump(index_file, f)
-            repo.git.add(github_repo_dir / "index.yaml")
-            repo.git.commit("-m", f"[auto] remove service {service}")
-            origin.push()
-        repo.git.checkout("main")
+        service_name = input_data["service"]
+        message = f"service {service_name} deleted"
+        try:
+            delete_service(service_name)
+        except Exception as e:
+            message = str(e)
         data = {"message": message}
         self.finish(json.dumps(data))
 
@@ -210,6 +221,8 @@ class Service:
 
     def create_service(self, data):
         service_name = data["name"].strip().replace(" ", "_").lower()
+        if (self.repo_charts_dir / service_name).exists():
+            delete_service(service_name)
         service_repo_dir = self.repo_charts_dir / service_name
         self.service_version = data["version"]
         if data["appType"] == "fromRepo":
@@ -223,7 +236,11 @@ class Service:
             image = data["appImage"]
         elif data["appType"] == "fromLocalDirectory":
             # image creation from path
-            image = self.create_app_from_scratch(service_name, data["appDir"])
+            image = self.create_app_from_scratch(
+                service_name,
+                data["appDir"],
+                data["notebookName"],
+            )
         else:
             raise "Not supported app type"
         try:
@@ -251,7 +268,7 @@ class Service:
                     with open(service_repo_dir / finput, "w") as outf:
                         for line in inf:
                             outf.write(
-                                line.replace("${NAME}", data["name"])
+                                line.replace("${NAME}", service_name)
                                 .replace("${DESCRIPTION}", data.get("desc", ""))
                                 .replace("${IMAGE}", image)
                                 .replace(

@@ -61,7 +61,7 @@ const formStyle = {
 };
 
 const submitButtonStyle = {
-  marginTop: '2em',
+  marginTop: '1.2em',
   backgroundColor: '#28a745',
   border: 'none',
   borderRadius: '5px',
@@ -101,6 +101,7 @@ export const OnyxiaComponent = (): JSX.Element => {
     e.preventDefault();
     const dataToSend = {
       name,
+      version,
       desc,
       iconURL,
       notebookName,
@@ -216,7 +217,11 @@ export const OnyxiaComponent = (): JSX.Element => {
         onSelect={k => setTabKey(k || '')}
         className="mb-3"
       >
-        <Tab eventKey="create" title="Create Service">
+        <Tab
+          eventKey="create"
+          title="Create Service"
+          style={{ overflow: 'auto', height: '700px' }}
+        >
           <Form onSubmit={handleSubmit} style={formStyle}>
             <h2>Service</h2>
             <Form.Group className="mb-3">
@@ -255,8 +260,7 @@ export const OnyxiaComponent = (): JSX.Element => {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <h2>Docker image</h2>
-              <Form.Label>Build App :</Form.Label>
+              <h4>Build App</h4>
               <Form.Group className="mb-3">
                 <Form.Check
                   inline
@@ -313,21 +317,27 @@ export const OnyxiaComponent = (): JSX.Element => {
                 />
               </Form.Group>
             </Form.Group>
-            <Form.Control
-              style={submitButtonStyle}
-              type="submit"
-              value="Create"
-            />
+            <Row>
+              <Col xs={3}>
+                <Form.Control
+                  style={submitButtonStyle}
+                  type="submit"
+                  value="Create"
+                />
+              </Col>
+              <Col>
+                {showMessage && (
+                  <Alert
+                    variant="info"
+                    onClose={() => setShowMessage(false)}
+                    dismissible
+                  >
+                    <div dangerouslySetInnerHTML={{ __html: message }} />
+                  </Alert>
+                )}
+              </Col>
+            </Row>
           </Form>
-          {showMessage && (
-            <Alert
-              variant="info"
-              onClose={() => setShowMessage(false)}
-              dismissible
-            >
-              <div dangerouslySetInnerHTML={{ __html: message }} />
-            </Alert>
-          )}
         </Tab>
         <Tab eventKey="handle" title="Handle services">
           <ListeServices reload={tabKey} />
