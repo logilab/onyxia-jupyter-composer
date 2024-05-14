@@ -77,17 +77,6 @@ class CheckServiceVersion(APIHandler):
         self.finish(json.dumps({"message": message}))
 
 
-class CloneAppHandler(APIHandler):
-
-    @tornado.web.authenticated
-    def post(self):
-        # input_data is a dictionary with a key "name"
-        input_data = self.get_json_body()
-        repo = git.Repo.clone_from(input_data, APP_DIR)
-        data = {"message": repo.working_dir}
-        self.finish(json.dumps(data))
-
-
 class ListServiceHandler(APIHandler):
 
     @tornado.web.authenticated
@@ -153,7 +142,6 @@ def setup_handlers(web_app):
     create_service_pattern = url_path_join(
         base_url, "jupyterlab-onyxia-composer", "create"
     )
-    clone_app_pattern = url_path_join(base_url, "jupyterlab-onyxia-composer", "clone")
     list_services_pattern = url_path_join(
         base_url, "jupyterlab-onyxia-composer", "services"
     )
@@ -168,7 +156,6 @@ def setup_handlers(web_app):
     )
     handlers = [
         (create_service_pattern, CreateServiceHandler),
-        (clone_app_pattern, CloneAppHandler),
         (list_services_pattern, ListServiceHandler),
         (delete_service_pattern, DeleteServiceHandler),
         (check_srv_name_pattern, CheckServiceExist),
@@ -188,9 +175,10 @@ class Service:
         self.repo = git.Repo(github_repo_dir)
         self.message = ""
 
-    def create_app_from_scratch(self, service_name, app_path, notebook_name):
+    def create_app(self, service_name, notebook_name, commands, app_path=None):
         """
-        Create App from local directory
+        Create App from local directory or git repository
+        depends on command variable
         """
         new_image_dir = self.images_dir / service_name
         try:
@@ -198,16 +186,23 @@ class Service:
         except Exception as e:
             self.message = f"Directory {new_image_dir} already exist"
             raise e
-        shutil.copyfile(
-            self.images_dir / "Dockerfile-voila", new_image_dir / "Dockerfile"
-        )
+        with open(self.images_dir / "Dockerfile-voila", "r") as inf:
+            with open(new_image_dir / "Dockerfile", "w") as outf:
+                for line in inf:
+                    if "${COMMANDS}" in line:
+                        outf.writelines(commands)
+                    else:
+                        outf.write(line)
+        if app_path:
+            for filename in os.listdir(app_path):
+                if os.path.isdir(Path(app_path) / filename):
+                    if not filename.startswith("."):
+                        shutil.copytree(
+                            Path(app_path) / filename, new_image_dir / filename
+                        )
+                else:
+                    shutil.copy(Path(app_path) / filename, new_image_dir / filename)
         image = f"{DOCKER_REPO}/{service_name}:latest"
-        for filename in os.listdir(app_path):
-            if os.path.isdir(Path(app_path) / filename):
-                if not filename.startswith("."):
-                    shutil.copytree(Path(app_path) / filename, new_image_dir / filename)
-            else:
-                shutil.copy(Path(app_path) / filename, new_image_dir / filename)
         return image
 
     def git_commit_and_push(self, service_name, service_dir, appType):
@@ -257,20 +252,25 @@ class Service:
         service_repo_dir = self.repo_charts_dir / service_name
         self.service_version = data["version"]
         if data["appType"] == "fromRepo":
-            if not APP_DIR.exists():
-                self.repo.clone_from(data["appRepoURL"], APP_DIR)
-            image = self.create_app_from_scratch(
-                service_name, APP_DIR, data["notebookName"]
+            # image creation from repo
+            commands = ["WORKDIR /srv\n" f"RUN git clone {data['appRepoURL']} .\n"]
+            if "revision" in data:
+                commands.append(f"RUN git checkout {data['revision']}\n")
+            image = self.create_app(
+                service_name,
+                data["notebookName"],
+                commands,
             )
         elif data["appType"] == "fromDockerImage":
             # service from existed docker image
             image = data["appImage"]
         elif data["appType"] == "fromLocalDirectory":
             # image creation from path
-            image = self.create_app_from_scratch(
+            image = self.create_app(
                 service_name,
-                data["appDir"],
                 data["notebookName"],
+                ["COPY . /srv/\n"],
+                data["appDir"],
             )
         else:
             raise "Not supported app type"

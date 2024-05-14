@@ -8,6 +8,7 @@ import Tabs from 'react-bootstrap/Tabs';
 import Image from 'react-bootstrap/Image';
 import Table from 'react-bootstrap/Table';
 import Alert from 'react-bootstrap/Alert';
+import InputGroup from 'react-bootstrap/InputGroup';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -88,6 +89,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [appRepoURL, setAppRepoURL] = React.useState<string | undefined>(
     undefined
   );
+  const [revision, setRevision] = React.useState<string | undefined>(undefined);
   const [appImage, setAppImage] = React.useState<string | undefined>(undefined);
   const [appDir, setAppDir] = React.useState<string | undefined>(undefined);
   const AppTypeLabel = {
@@ -107,6 +109,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       notebookName,
       appType,
       appRepoURL,
+      revision,
       appImage,
       appDir
     };
@@ -182,22 +185,6 @@ export const OnyxiaComponent = (): JSX.Element => {
       .catch(reason => {
         console.error(
           `Error on POST /jupyterlab-onyxia-composer/checkSrvVersion ${appRepoURL}.\n${reason}`
-        );
-      });
-  };
-
-  const cloneApp = () => {
-    requestAPI<any>('clone', {
-      body: JSON.stringify(appRepoURL),
-      method: 'POST'
-    })
-      .then(reply => {
-        setMessage(reply['message']);
-        setShowMessage(true);
-      })
-      .catch(reason => {
-        console.error(
-          `Error on POST /jupyterlab-onyxia-composer/clone ${appRepoURL}.\n${reason}`
         );
       });
   };
@@ -296,15 +283,18 @@ export const OnyxiaComponent = (): JSX.Element => {
                     />
                   </Col>
                   {appType === 'fromRepo' && (
-                    <Col>
-                      <Button
-                        variant="light"
-                        disabled={appRepoURL === undefined}
-                        onClick={cloneApp}
-                      >
-                        Clone
-                      </Button>
-                    </Col>
+                    <>
+                      <Col>
+                        <InputGroup className="mb-3">
+                          <InputGroup.Text>Rev</InputGroup.Text>
+                          <Form.Control
+                            type="text"
+                            disabled={appRepoURL === undefined}
+                            onChange={e => setRevision(e.currentTarget.value)}
+                          />
+                        </InputGroup>
+                      </Col>
+                    </>
                   )}
                 </Row>
               </Form.Group>
