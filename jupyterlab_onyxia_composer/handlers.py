@@ -46,7 +46,7 @@ class CheckServiceExist(APIHandler):
         if (github_repo_dir / "charts" / service).exists():
             message = f"WARNING: {service} already exists, It will be updated"
         elif service.lower() != service:
-            message = f"WARNING: We do not support capital letters in the service name"
+            message = "WARNING: We do not support capital letters in the service name"
         for serv in os.listdir(github_repo_dir / "charts"):
             for tag in repo.tags:
                 if service == "-".join(tag.name.split("-")[:-1]):
@@ -198,7 +198,9 @@ class Service:
         except Exception as e:
             self.message = f"Directory {new_image_dir} already exist"
             raise e
-        shutil.copyfile(self.images_dir / "Dockerfile-voila", new_image_dir / "Dockerfile")
+        shutil.copyfile(
+            self.images_dir / "Dockerfile-voila", new_image_dir / "Dockerfile"
+        )
         image = f"{DOCKER_REPO}/{service_name}:latest"
         for filename in os.listdir(app_path):
             if os.path.isdir(Path(app_path) / filename):
@@ -215,6 +217,38 @@ class Service:
         self.repo.index.commit(f"[auto] add {service_name} service")
         origin = self.repo.remote(name="origin")
         origin.push()
+
+    def copy_templates(self, service_name, image, data):
+        service_repo_dir = self.repo_charts_dir / service_name
+        for finput in os.listdir(self.voila_template_dir):
+            if os.path.isdir(self.voila_template_dir / finput):
+                shutil.copytree(
+                    self.voila_template_dir / finput, service_repo_dir / finput
+                )
+                with open(
+                    self.voila_template_dir / finput / "statefulset.yaml", "r"
+                ) as inf:
+                    with open(
+                        service_repo_dir / finput / "statefulset.yaml", "w"
+                    ) as outf:
+                        for line in inf:
+                            outf.write(
+                                line.replace("${NOTEBOOK_NAME}", data["notebookName"])
+                            )
+            else:
+                with open(self.voila_template_dir / finput, "r") as inf:
+                    with open(service_repo_dir / finput, "w") as outf:
+                        for line in inf:
+                            outf.write(
+                                line.replace("${NAME}", service_name)
+                                .replace("${DESCRIPTION}", data.get("desc", ""))
+                                .replace("${IMAGE}", image)
+                                .replace(
+                                    "${ICONURL}",
+                                    data.get("iconURL", DEFAULT_VOILA_ICON_URL),
+                                )
+                                .replace("${VERSION}", self.service_version)
+                            )
 
     def create_service(self, data):
         service_name = data["name"].strip().replace(" ", "_").lower()
@@ -245,35 +279,8 @@ class Service:
         except Exception:
             self.message = "This service already exist"
             raise Exception("This service already exist")
-        for finput in os.listdir(self.voila_template_dir):
-            if os.path.isdir(self.voila_template_dir / finput):
-                shutil.copytree(
-                    self.voila_template_dir / finput, service_repo_dir / finput
-                )
-                with open(
-                    self.voila_template_dir / finput / "statefulset.yaml", "r"
-                ) as inf:
-                    with open(
-                        service_repo_dir / finput / "statefulset.yaml", "w"
-                    ) as outf:
-                        for line in inf:
-                            outf.write(
-                                line.replace("${NOTEBOOK_NAME}", data["notebookName"])
-                            )
-            else:
-                with open(self.voila_template_dir / finput, "r") as inf:
-                    with open(service_repo_dir / finput, "w") as outf:
-                        for line in inf:
-                            outf.write(
-                                line.replace("${NAME}", service_name)
-                                .replace("${DESCRIPTION}", data.get("desc", ""))
-                                .replace("${IMAGE}", image)
-                                .replace(
-                                    "${ICONURL}",
-                                    data.get("iconURL", DEFAULT_VOILA_ICON_URL),
-                                )
-                                .replace("${VERSION}", self.service_version)
-                            )
+        # handle templates
+        self.copy_templates(service_name, image, data)
         # git
         self.git_commit_and_push(service_name, service_repo_dir, data["appType"])
         repo_url = self.repo.remotes.origin.url
