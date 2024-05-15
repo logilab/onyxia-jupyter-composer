@@ -40,10 +40,7 @@ class CheckServiceExist(APIHandler):
         # input_data is a dictionary with a key "name"
         github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
         repo = git.Repo(github_repo_dir)
-        service = self.get_json_body()
-        message = ""
-        if service.lower() != service:
-            message = "WARNING: We do not support capital letters in the service name"
+        service = self.get_json_body().strip().replace(" ", "_").lower()
         # handle version
         version = "0.0.1"
         for tag in repo.tags:
@@ -63,7 +60,7 @@ class CheckServiceExist(APIHandler):
         # if exist handle metadatas
         service_path = github_repo_dir / "charts" / service
         if service and service_path.exists():
-            metadatas['exists'] = True
+            metadatas["exists"] = True
             chart_path = service_path / "Chart.yaml"
             if chart_path.exists():
                 with open(chart_path) as f:
@@ -80,7 +77,7 @@ class CheckServiceVersion(APIHandler):
         repo = git.Repo(github_repo_dir)
         input_data = self.get_json_body()
         version = input_data["version"]
-        service_name = input_data["name"]
+        service_name = input_data["name"].strip().replace(" ", "_").lower()
         message = ""
         if (github_repo_dir / "charts" / service_name).exists():
             for tag in repo.tags:
@@ -107,10 +104,10 @@ class ListServiceHandler(APIHandler):
                 services[serv] = {}
                 with open(chart_path) as f:
                     chart_file = yaml.safe_load(f)
-                services[serv]['description'] = chart_file['description']
+                services[serv]["description"] = chart_file["description"]
                 for tag in repo.tags:
                     if serv == "-".join(tag.name.split("-")[:-1]).lower():
-                        services[serv]['tab'] = tag.name
+                        services[serv]["tag"] = tag.name
         data = {"services": services}
         self.finish(json.dumps(data))
 

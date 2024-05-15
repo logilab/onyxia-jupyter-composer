@@ -209,7 +209,7 @@ export const OnyxiaComponent = (): JSX.Element => {
         <Tab
           eventKey="create"
           title="Create Service"
-          style={{ overflow: 'auto', height: '700px' }}
+          style={{ overflow: 'auto', height: '750px' }}
         >
           <Form onSubmit={handleSubmit} style={formStyle}>
             <h2>Service</h2>
