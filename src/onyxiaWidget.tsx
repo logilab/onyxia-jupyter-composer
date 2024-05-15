@@ -9,6 +9,7 @@ import Image from 'react-bootstrap/Image';
 import Table from 'react-bootstrap/Table';
 import Alert from 'react-bootstrap/Alert';
 import InputGroup from 'react-bootstrap/InputGroup';
+import Spinner from 'react-bootstrap/Spinner';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
@@ -96,9 +97,13 @@ export const OnyxiaComponent = (): JSX.Element => {
   };
   const [version, setVersion] = React.useState<string>('0.0.1');
   const [existedApp, setExistedApp] = React.useState(false);
+  const [createdApp, setCreatedApp] = React.useState<string | undefined>(
+    undefined
+  );
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setCreatedApp(name);
     const dataToSend = {
       name,
       version,
@@ -118,6 +123,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       .then(reply => {
         setMessage(reply['message']);
         setShowMessage(true);
+        setCreatedApp(undefined);
       })
       .catch(reason => {
         console.error(
@@ -313,11 +319,17 @@ export const OnyxiaComponent = (): JSX.Element => {
             </Form.Group>
             <Row>
               <Col xs={3}>
-                <Form.Control
-                  style={submitButtonStyle}
-                  type="submit"
-                  value={existedApp ? 'Update' : 'Create'}
-                />
+                {createdApp ? (
+                  <Button disabled={true} style={submitButtonStyle}>
+                    <Spinner as="span" animation="grow" size="sm" />
+                  </Button>
+                ) : (
+                  <Form.Control
+                    style={submitButtonStyle}
+                    type="submit"
+                    value={existedApp ? 'Update' : 'Create'}
+                  />
+                )}
               </Col>
               <Col>
                 {showMessage && (
@@ -345,7 +357,9 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
   const [services, setServices] = React.useState([]);
   const [message, setMessage] = React.useState('');
   const [showMessage, setShowMessage] = React.useState(false);
-  React.useEffect(() => {
+  const [deletedService, setDeletedService] = React.useState('');
+
+  const getServices = () => {
     requestAPI<any>('services', {
       method: 'POST'
     })
@@ -360,9 +374,14 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
       });
     setShowMessage(false);
     setMessage('');
+  };
+
+  React.useEffect(() => {
+    getServices();
   }, [reload]);
 
   const deleteService = (servName: string) => {
+    setDeletedService(servName);
     requestAPI<any>('delete', {
       body: JSON.stringify({ service: servName }),
       method: 'POST'
@@ -370,6 +389,8 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
       .then(reply => {
         setMessage(reply.message);
         setShowMessage(true);
+        setDeletedService('');
+        getServices();
       })
       .catch(reason => {
         console.error(
@@ -397,13 +418,27 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
               <td>{service['tag']}</td>
               <td>
                 {serviceName !== 'jupyter-composer' && (
-                  <Button
-                    variant="light"
-                    size="sm"
-                    onClick={() => deleteService(serviceName)}
-                  >
-                    <i className="fa fa-trash"></i>
-                  </Button>
+                  <>
+                    {deletedService === serviceName ? (
+                      <Button variant="light" disabled>
+                        <Spinner
+                          as="span"
+                          animation="grow"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="light"
+                        size="sm"
+                        onClick={() => deleteService(serviceName)}
+                      >
+                        <i className="fa fa-trash"></i>
+                      </Button>
+                    )}
+                  </>
                 )}
               </td>
             </tr>
