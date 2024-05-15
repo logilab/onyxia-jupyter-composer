@@ -49,9 +49,6 @@ export async function requestAPI<T>(
   return data;
 }
 
-const voilaDefaultURL =
-  'https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg';
-
 const formStyle = {
   maxWidth: '700px',
   margin: '20px auto',
@@ -79,7 +76,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [tabKey, setTabKey] = React.useState('create');
   const [name, setName] = React.useState<string | undefined>(undefined);
   const [desc, setDesc] = React.useState<string>('');
-  const [iconURL, setIconURL] = React.useState<string>(voilaDefaultURL);
+  const [iconURL, setIconURL] = React.useState<string>('');
   const [notebookName, setNotebookName] = React.useState('index.ipynb');
   const [message, setMessage] = React.useState<string>('');
   const [showMessage, setShowMessage] = React.useState(false);
@@ -98,6 +95,7 @@ export const OnyxiaComponent = (): JSX.Element => {
     fromLocalDirectory: 'App path'
   };
   const [version, setVersion] = React.useState<string>('0.0.1');
+  const [existedApp, setExistedApp] = React.useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -151,12 +149,16 @@ export const OnyxiaComponent = (): JSX.Element => {
       method: 'POST'
     })
       .then(reply => {
-        setVersion(reply['version']);
-        const msg = reply['message'];
-        if (msg) {
-          setMessage(msg);
+        setVersion(reply.version);
+        setDesc(reply.description);
+        setIconURL(reply.icon);
+        if (reply.exists) {
+          setExistedApp(true);
+          setMessage(`WARNING: ${name} already exists, It will be updated`);
           setShowMessage(true);
         } else {
+          setExistedApp(false);
+          setMessage('');
           setShowMessage(false);
         }
       })
@@ -236,6 +238,7 @@ export const OnyxiaComponent = (): JSX.Element => {
               <Form.Label>Description</Form.Label>
               <Form.Control
                 type="text"
+                value={desc}
                 onChange={e => setDesc(e.currentTarget.value)}
               />
             </Form.Group>
@@ -243,6 +246,7 @@ export const OnyxiaComponent = (): JSX.Element => {
               <Form.Label>Icon Url</Form.Label>
               <Form.Control
                 type="text"
+                value={iconURL}
                 onChange={e => setIconURL(e.currentTarget.value)}
               />
             </Form.Group>
@@ -312,7 +316,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                 <Form.Control
                   style={submitButtonStyle}
                   type="submit"
-                  value="Create"
+                  value={existedApp ? 'Update' : 'Create'}
                 />
               </Col>
               <Col>
@@ -346,7 +350,8 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
       method: 'POST'
     })
       .then(reply => {
-        setServices(reply['services']);
+        console.log(reply);
+        setServices(reply.services);
       })
       .catch(reason => {
         console.error(
@@ -363,7 +368,7 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
       method: 'POST'
     })
       .then(reply => {
-        setMessage(reply['message']);
+        setMessage(reply.message);
         setShowMessage(true);
       })
       .catch(reason => {
@@ -379,15 +384,17 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
         <thead>
           <tr>
             <th>Service Name</th>
+            <th>Description</th>
             <th>Last Tag</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {Object.entries(services).map(([serviceName, serviceTag]) => (
+          {Object.entries(services).map(([serviceName, service]) => (
             <tr>
               <td>{serviceName}</td>
-              <td>{serviceTag}</td>
+              <td>{service['description']}</td>
+              <td>{service['tag']}</td>
               <td>
                 {serviceName !== 'jupyter-composer' && (
                   <Button

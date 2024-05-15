@@ -41,22 +41,36 @@ class CheckServiceExist(APIHandler):
         github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
         repo = git.Repo(github_repo_dir)
         service = self.get_json_body()
-        version = "0.0.1"
         message = ""
-        if (github_repo_dir / "charts" / service).exists():
-            message = f"WARNING: {service} already exists, It will be updated"
-        elif service.lower() != service:
+        if service.lower() != service:
             message = "WARNING: We do not support capital letters in the service name"
-        for serv in os.listdir(github_repo_dir / "charts"):
-            for tag in repo.tags:
-                if service == "-".join(tag.name.split("-")[:-1]):
-                    current_version = tag.name.split("-")[-1]
-                    last_number = int(current_version.split(".")[-1])
-                    version = ".".join(
-                        current_version.split(".")[:-1] + [str(last_number + 1)]
-                    )
-        data = {"message": message, "version": version}
-        self.finish(json.dumps(data))
+        # handle version
+        version = "0.0.1"
+        for tag in repo.tags:
+            if service == "-".join(tag.name.split("-")[:-1]):
+                current_version = tag.name.split("-")[-1]
+                last_number = int(current_version.split(".")[-1])
+                # increase version
+                version = ".".join(
+                    current_version.split(".")[:-1] + [str(last_number + 1)]
+                )
+        metadatas = {
+            "version": version,
+            "exist": False,
+            "description": "",
+            "icon": "",
+        }
+        # if exist handle metadatas
+        service_path = github_repo_dir / "charts" / service
+        if service and service_path.exists():
+            metadatas['exists'] = True
+            chart_path = service_path / "Chart.yaml"
+            if chart_path.exists():
+                with open(chart_path) as f:
+                    chart_file = yaml.safe_load(f)
+                metadatas["description"] = chart_file["description"]
+                metadatas["icon"] = chart_file["icon"]
+        self.finish(json.dumps(metadatas))
 
 
 class CheckServiceVersion(APIHandler):
@@ -88,10 +102,15 @@ class ListServiceHandler(APIHandler):
         origin.pull()
         services = {}
         for serv in os.listdir(github_repo_dir / "charts"):
-            for tag in repo.tags:
-                if serv == "-".join(tag.name.split("-")[:-1]).lower():
-                    services[serv] = tag.name
-
+            chart_path = github_repo_dir / "charts" / serv / "Chart.yaml"
+            if chart_path.exists():
+                services[serv] = {}
+                with open(chart_path) as f:
+                    chart_file = yaml.safe_load(f)
+                services[serv]['description'] = chart_file['description']
+                for tag in repo.tags:
+                    if serv == "-".join(tag.name.split("-")[:-1]).lower():
+                        services[serv]['tab'] = tag.name
         data = {"services": services}
         self.finish(json.dumps(data))
 
@@ -214,7 +233,6 @@ class Service:
         origin.push()
 
     def copy_templates(self, service_name, image, data):
-        breakpoint()
         service_repo_dir = self.repo_charts_dir / service_name
         for finput in os.listdir(self.voila_template_dir):
             if os.path.isdir(self.voila_template_dir / finput):
