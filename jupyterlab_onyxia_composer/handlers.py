@@ -214,6 +214,7 @@ class Service:
         origin.push()
 
     def copy_templates(self, service_name, image, data):
+        breakpoint()
         service_repo_dir = self.repo_charts_dir / service_name
         for finput in os.listdir(self.voila_template_dir):
             if os.path.isdir(self.voila_template_dir / finput):
@@ -241,6 +242,13 @@ class Service:
                                 .replace(
                                     "${ICONURL}",
                                     data.get("iconURL", DEFAULT_VOILA_ICON_URL),
+                                )
+                                .replace(
+                                    "${REPOURL}",
+                                    data.get(
+                                        "appRepoURL",
+                                        f"{self.repo.remotes.origin.url}/tree/main/charts/{service_name}",
+                                    ),
                                 )
                                 .replace("${VERSION}", self.service_version)
                             )
