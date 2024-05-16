@@ -223,9 +223,9 @@ class Service:
         image = f"{DOCKER_REPO}/{service_name}:latest"
         return image
 
-    def git_commit_and_push(self, service_name, service_dir, appType):
+    def git_commit_and_push(self, service_name, service_dir, app_build_type):
         self.repo.index.add(service_dir)
-        if appType != "fromDockerImage":
+        if app_build_type != "fromDockerImage":
             self.repo.index.add(self.images_dir / service_name)
         self.repo.index.commit(f"[auto] add {service_name} service")
         origin = self.repo.remote(name="origin")
@@ -246,15 +246,14 @@ class Service:
                     ) as outf:
                         for line in inf:
                             outf.write(
-                                line.replace(
-                                    "${NOTEBOOK_NAME}",
-                                    data["notebookName"]
-                                ).replace(
+                                line.replace("${NOTEBOOK_NAME}", data["notebookName"])
+                                .replace(
                                     "${DEFAULT_CPU}",
-                                    data.get("cpuLimit", DEFAULT_CPU_LIMIT)
-                                ).replace(
+                                    data.get("cpuLimit", DEFAULT_CPU_LIMIT),
+                                )
+                                .replace(
                                     "${DEFAULT_MEMORY}",
-                                    data.get("memLimit", DEFAULT_MEM_LIMIT)
+                                    data.get("memLimit", DEFAULT_MEM_LIMIT),
                                 ),
                             )
             else:
@@ -285,7 +284,8 @@ class Service:
             delete_service(service_name)
         service_repo_dir = self.repo_charts_dir / service_name
         self.service_version = data["version"]
-        if data["appType"] == "fromRepo":
+        app_build_type = data["appBuildType"]
+        if app_build_type == "fromRepo":
             # image creation from repo
             commands = ["WORKDIR /srv\n" f"RUN git clone {data['appRepoURL']} .\n"]
             if "revision" in data:
@@ -295,10 +295,10 @@ class Service:
                 data["notebookName"],
                 commands,
             )
-        elif data["appType"] == "fromDockerImage":
+        elif app_build_type == "fromDockerImage":
             # service from existed docker image
             image = data["appImage"]
-        elif data["appType"] == "fromLocalDirectory":
+        elif app_build_type == "fromLocalDirectory":
             # image creation from path
             image = self.create_app(
                 service_name,
@@ -316,7 +316,7 @@ class Service:
         # handle templates
         self.copy_templates(service_name, image, data)
         # git
-        self.git_commit_and_push(service_name, service_repo_dir, data["appType"])
+        self.git_commit_and_push(service_name, service_repo_dir, app_build_type)
         repo_url = self.repo.remotes.origin.url
         if "@" in repo_url:
             repo_url = f"https://{repo_url.split('@')[-1]}"

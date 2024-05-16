@@ -81,7 +81,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [notebookName, setNotebookName] = React.useState('index.ipynb');
   const [message, setMessage] = React.useState<string>('');
   const [showMessage, setShowMessage] = React.useState(false);
-  const [appType, setAppType] = React.useState<
+  const [appBuildType, setAppBuildType] = React.useState<
     'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
   >('fromRepo');
   const [appRepoURL, setAppRepoURL] = React.useState<string | undefined>(
@@ -112,7 +112,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       desc,
       iconURL,
       notebookName,
-      appType,
+      appBuildType,
       appRepoURL,
       revision,
       appImage,
@@ -135,7 +135,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   };
 
   const handleAppType = (value: string) => {
-    switch (appType) {
+    switch (appBuildType) {
       case 'fromRepo':
         setAppRepoURL(value);
         break;
@@ -265,27 +265,27 @@ export const OnyxiaComponent = (): JSX.Element => {
                   inline
                   type="radio"
                   defaultChecked
-                  name="appType"
+                  name="appBuildType"
                   label="from Repo"
-                  onChange={() => setAppType('fromRepo')}
+                  onChange={() => setAppBuildType('fromRepo')}
                 />
                 <Form.Check
                   inline
                   type="radio"
-                  name="appType"
+                  name="appBuildType"
                   label="from Docker Image"
-                  onChange={() => setAppType('fromDockerImage')}
+                  onChange={() => setAppBuildType('fromDockerImage')}
                 />
                 <Form.Check
                   inline
                   type="radio"
-                  name="appType"
+                  name="appBuildType"
                   label="from Directory"
-                  onChange={() => setAppType('fromLocalDirectory')}
+                  onChange={() => setAppBuildType('fromLocalDirectory')}
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>{AppTypeLabel[appType]} *</Form.Label>
+                <Form.Label>{AppTypeLabel[appBuildType]} *</Form.Label>
                 <Row>
                   <Col xs={9}>
                     <Form.Control
@@ -294,7 +294,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                       onChange={e => handleAppType(e.currentTarget.value)}
                     />
                   </Col>
-                  {appType === 'fromRepo' && (
+                  {appBuildType === 'fromRepo' && (
                     <>
                       <Col>
                         <InputGroup className="mb-3">
@@ -311,14 +311,6 @@ export const OnyxiaComponent = (): JSX.Element => {
                 </Row>
               </Form.Group>
               <h4>Advanced Options</h4>
-              <Form.Group className="mb-3">
-                <Form.Label>Notebook name</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={notebookName}
-                  onChange={e => setNotebookName(e.currentTarget.value)}
-                />
-              </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label>CPU {cpuLimit}m</Form.Label>
                 <Form.Range
