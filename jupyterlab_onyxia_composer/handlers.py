@@ -10,8 +10,6 @@ from jupyter_server.utils import url_path_join
 import tornado
 
 DEFAULT_ICON_URL = "https://cdn.iconscout.com/icon/free/png-512/free-app-store-appstore-brand-logo-47402.png"
-DEFAULT_CPU_LIMIT = "1500m"
-DEFAULT_MEM_LIMIT = "2Gi"
 DOCKER_REPO = "registry.logilab.fr/open-source/dockerfiles/onyxia"
 APP_DIR = Path.home() / "work" / "app"
 
@@ -112,16 +110,11 @@ class ListServiceHandler(APIHandler):
         self.finish(json.dumps(data))
 
 
-def delete_service(service_name):
+def delete_service(service_name, update=False):
     github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
     repo = git.Repo(github_repo_dir)
     origin = repo.remote(name="origin")
-    origin.pull()
-    repo.git.rm(github_repo_dir / "charts" / service_name, r=True)
-    if (github_repo_dir / "images" / service_name).exists():
-        repo.git.rm(github_repo_dir / "images" / service_name, r=True)
-    repo.git.commit("-m", f"[auto] remove service {service_name}")
-    origin.push()
+
     repo.git.checkout("gh-pages")
     origin.pull()
     with open(github_repo_dir / "index.yaml") as f:
@@ -133,7 +126,15 @@ def delete_service(service_name):
         repo.git.add(github_repo_dir / "index.yaml")
         repo.git.commit("-m", f"[auto] remove service {service_name}")
         origin.push()
+
     repo.git.checkout("main")
+    origin.pull()
+    repo.git.rm(github_repo_dir / "charts" / service_name, r=True)
+    if (github_repo_dir / "images" / service_name).exists():
+        repo.git.rm(github_repo_dir / "images" / service_name, r=True)
+    if not update:
+        repo.git.commit("-m", f"[auto] remove service {service_name}")
+        origin.push()
 
 
 class DeleteServiceHandler(APIHandler):
@@ -268,18 +269,18 @@ class Service:
                                 .replace("${VERSION}", self.service_version)
                                 .replace(
                                     "${DEFAULT_CPU}",
-                                    data.get("cpuLimit", DEFAULT_CPU_LIMIT),
+                                    data["cpuLimit"],
                                 )
                                 .replace(
                                     "${DEFAULT_MEMORY}",
-                                    data.get("memLimit", DEFAULT_MEM_LIMIT),
+                                    data["memLimit"],
                                 )
                             )
 
     def create_service(self, data):
         service_name = data["name"].strip().replace(" ", "_").lower()
         if (self.repo_charts_dir / service_name).exists():
-            delete_service(service_name)
+            delete_service(service_name, update=True)
         service_repo_dir = self.repo_charts_dir / service_name
         self.service_version = data["version"]
         app_build_type = data["appBuildType"]

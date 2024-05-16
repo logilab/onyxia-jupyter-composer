@@ -102,8 +102,8 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [createdApp, setCreatedApp] = React.useState<string | undefined>(
     undefined
   );
-  const [cpuLimit, setCpuLimit] = React.useState(1500);
-  const [memLimit, setMemLimit] = React.useState(1);
+  const [cpuLimit, setCpuLimit] = React.useState(2000);
+  const [memLimit, setMemLimit] = React.useState(3);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
