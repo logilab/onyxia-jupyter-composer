@@ -9,9 +9,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 
-DEFAULT_VOILA_ICON_URL = (
-    "https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg"
-)
+DEFAULT_ICON_URL = "https://cdn.iconscout.com/icon/free/png-512/free-app-store-appstore-brand-logo-47402.png"
 DEFAULT_CPU_LIMIT = "1500m"
 DEFAULT_MEM_LIMIT = "2Gi"
 DOCKER_REPO = "registry.logilab.fr/open-source/dockerfiles/onyxia"
@@ -186,17 +184,17 @@ class Service:
 
     def __init__(self):
         github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
-        self.voila_template_dir = github_repo_dir / "charts-template" / "voila"
+        self.service_template_dir = github_repo_dir / "charts-template"
         self.repo_charts_dir = github_repo_dir / "charts"
         self.images_dir = github_repo_dir / "images"
         self.service_version = "0.0.1"
         self.repo = git.Repo(github_repo_dir)
         self.message = ""
 
-    def create_app(self, service_name, notebook_name, commands, app_path=None):
+    def create_app(self, service_name, notebook_name, build_commands, app_path=None):
         """
         Create App from local directory or git repository
-        depends on command variable
+        depends on build_command variable
         """
         new_image_dir = self.images_dir / service_name
         try:
@@ -204,11 +202,11 @@ class Service:
         except Exception as e:
             self.message = f"Directory {new_image_dir} already exist"
             raise e
-        with open(self.images_dir / "Dockerfile-voila", "r") as inf:
+        with open(self.images_dir / "Dockerfile-template", "r") as inf:
             with open(new_image_dir / "Dockerfile", "w") as outf:
                 for line in inf:
-                    if "${COMMANDS}" in line:
-                        outf.writelines(commands)
+                    if "${BUILD_COMMANDS}" in line:
+                        outf.writelines(build_commands)
                     else:
                         outf.write(line)
         if app_path:
@@ -231,33 +229,25 @@ class Service:
         origin = self.repo.remote(name="origin")
         origin.push()
 
-    def copy_templates(self, service_name, image, data):
+    def copy_templates(self, service_name, image, app_command, data):
         service_repo_dir = self.repo_charts_dir / service_name
-        for finput in os.listdir(self.voila_template_dir):
-            if os.path.isdir(self.voila_template_dir / finput):
+        for finput in os.listdir(self.service_template_dir):
+            if os.path.isdir(self.service_template_dir / finput):
                 shutil.copytree(
-                    self.voila_template_dir / finput, service_repo_dir / finput
+                    self.service_template_dir / finput, service_repo_dir / finput
                 )
                 with open(
-                    self.voila_template_dir / finput / "statefulset.yaml", "r"
+                    self.service_template_dir / finput / "statefulset.yaml", "r"
                 ) as inf:
                     with open(
                         service_repo_dir / finput / "statefulset.yaml", "w"
                     ) as outf:
                         for line in inf:
                             outf.write(
-                                line.replace("${NOTEBOOK_NAME}", data["notebookName"])
-                                .replace(
-                                    "${DEFAULT_CPU}",
-                                    data.get("cpuLimit", DEFAULT_CPU_LIMIT),
-                                )
-                                .replace(
-                                    "${DEFAULT_MEMORY}",
-                                    data.get("memLimit", DEFAULT_MEM_LIMIT),
-                                ),
+                                line.replace("${APP_COMMAND}", app_command)
                             )
             else:
-                with open(self.voila_template_dir / finput, "r") as inf:
+                with open(self.service_template_dir / finput, "r") as inf:
                     with open(service_repo_dir / finput, "w") as outf:
                         for line in inf:
                             outf.write(
@@ -266,7 +256,7 @@ class Service:
                                 .replace("${IMAGE}", image)
                                 .replace(
                                     "${ICONURL}",
-                                    data.get("iconURL", DEFAULT_VOILA_ICON_URL),
+                                    data.get("iconURL", DEFAULT_ICON_URL),
                                 )
                                 .replace(
                                     "${REPOURL}",
@@ -276,6 +266,14 @@ class Service:
                                     ),
                                 )
                                 .replace("${VERSION}", self.service_version)
+                                .replace(
+                                    "${DEFAULT_CPU}",
+                                    data.get("cpuLimit", DEFAULT_CPU_LIMIT),
+                                )
+                                .replace(
+                                    "${DEFAULT_MEMORY}",
+                                    data.get("memLimit", DEFAULT_MEM_LIMIT),
+                                )
                             )
 
     def create_service(self, data):
@@ -287,13 +285,15 @@ class Service:
         app_build_type = data["appBuildType"]
         if app_build_type == "fromRepo":
             # image creation from repo
-            commands = ["WORKDIR /srv\n" f"RUN git clone {data['appRepoURL']} .\n"]
+            build_commands = [
+                "WORKDIR /srv\n" f"RUN git clone {data['appRepoURL']} .\n"
+            ]
             if "revision" in data:
-                commands.append(f"RUN git checkout {data['revision']}\n")
+                build_commands.append(f"RUN git checkout {data['revision']}\n")
             image = self.create_app(
                 service_name,
                 data["notebookName"],
-                commands,
+                build_commands,
             )
         elif app_build_type == "fromDockerImage":
             # service from existed docker image
@@ -314,7 +314,15 @@ class Service:
             self.message = "This service already exist"
             raise Exception("This service already exist")
         # handle templates
-        self.copy_templates(service_name, image, data)
+        if data["appType"] == "voila":
+            voila_options = "--Voila.ip='0.0.0.0' --port=8888 --no-browser"
+            app_command = f"voila /srv/{data['notebookName']} {voila_options}"
+        elif data["appType"] == "streamlit":
+            streamlit_options = "--server.baseUrlPath --server.headless true"
+            app_command = f"streamlit run /srv/{data['pythonFileName']} {streamlit_options}"
+        else:
+            raise Exception(f'Not supported app type {data["appType"]}')
+        self.copy_templates(service_name, image, app_command, data)
         # git
         self.git_commit_and_push(service_name, service_repo_dir, app_build_type)
         repo_url = self.repo.remotes.origin.url

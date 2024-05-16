@@ -79,11 +79,13 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [desc, setDesc] = React.useState<string>('');
   const [iconURL, setIconURL] = React.useState<string>('');
   const [notebookName, setNotebookName] = React.useState('index.ipynb');
+  const [pythonFileName, setPythonFileName] = React.useState('index.py');
   const [message, setMessage] = React.useState<string>('');
   const [showMessage, setShowMessage] = React.useState(false);
   const [appBuildType, setAppBuildType] = React.useState<
     'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
   >('fromRepo');
+  const [appType, setAppType] = React.useState<'voila' | 'streamlit'>('voila');
   const [appRepoURL, setAppRepoURL] = React.useState<string | undefined>(
     undefined
   );
@@ -112,6 +114,8 @@ export const OnyxiaComponent = (): JSX.Element => {
       desc,
       iconURL,
       notebookName,
+      pythonFileName,
+      appType,
       appBuildType,
       appRepoURL,
       revision,
@@ -134,7 +138,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       });
   };
 
-  const handleAppType = (value: string) => {
+  const handleAppBuildType = (value: string) => {
     switch (appBuildType) {
       case 'fromRepo':
         setAppRepoURL(value);
@@ -291,7 +295,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                     <Form.Control
                       type="text"
                       required
-                      onChange={e => handleAppType(e.currentTarget.value)}
+                      onChange={e => handleAppBuildType(e.currentTarget.value)}
                     />
                   </Col>
                   {appBuildType === 'fromRepo' && (
@@ -311,6 +315,42 @@ export const OnyxiaComponent = (): JSX.Element => {
                 </Row>
               </Form.Group>
               <h4>Advanced Options</h4>
+              <Form.Group className="mb-3">
+                <Form.Check
+                  inline
+                  type="radio"
+                  defaultChecked
+                  name="appType"
+                  label="voila"
+                  onChange={() => setAppType('voila')}
+                />
+                <Form.Check
+                  inline
+                  type="radio"
+                  name="appType"
+                  label="streamlit"
+                  onChange={() => setAppType('streamlit')}
+                />
+              </Form.Group>
+              {appType === 'voila' ? (
+                <Form.Group className="mb-3">
+                  <Form.Label>Notebook name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={notebookName}
+                    onChange={e => setNotebookName(e.currentTarget.value)}
+                  />
+                </Form.Group>
+              ) : (
+                <Form.Group className="mb-3">
+                  <Form.Label>Python file name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={pythonFileName}
+                    onChange={e => setPythonFileName(e.currentTarget.value)}
+                  />
+                </Form.Group>
+              )}
               <Form.Group className="mb-3">
                 <Form.Label>CPU {cpuLimit}m</Form.Label>
                 <Form.Range
