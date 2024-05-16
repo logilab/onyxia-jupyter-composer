@@ -12,6 +12,8 @@ import tornado
 DEFAULT_VOILA_ICON_URL = (
     "https://raw.githubusercontent.com/voila-dashboards/voila/main/docs/voila-logo.svg"
 )
+DEFAULT_CPU_LIMIT = "1500m"
+DEFAULT_MEM_LIMIT = "2Gi"
 DOCKER_REPO = "registry.logilab.fr/open-source/dockerfiles/onyxia"
 APP_DIR = Path.home() / "work" / "app"
 
@@ -244,7 +246,16 @@ class Service:
                     ) as outf:
                         for line in inf:
                             outf.write(
-                                line.replace("${NOTEBOOK_NAME}", data["notebookName"])
+                                line.replace(
+                                    "${NOTEBOOK_NAME}",
+                                    data["notebookName"]
+                                ).replace(
+                                    "${DEFAULT_CPU}",
+                                    data.get("cpuLimit", DEFAULT_CPU_LIMIT)
+                                ).replace(
+                                    "${DEFAULT_MEMORY}",
+                                    data.get("memLimit", DEFAULT_MEM_LIMIT)
+                                ),
                             )
             else:
                 with open(self.voila_template_dir / finput, "r") as inf:

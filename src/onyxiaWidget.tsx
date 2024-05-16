@@ -100,6 +100,8 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [createdApp, setCreatedApp] = React.useState<string | undefined>(
     undefined
   );
+  const [cpuLimit, setCpuLimit] = React.useState(1500);
+  const [memLimit, setMemLimit] = React.useState(1);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -308,12 +310,33 @@ export const OnyxiaComponent = (): JSX.Element => {
                   )}
                 </Row>
               </Form.Group>
+              <h4>Advanced Options</h4>
               <Form.Group className="mb-3">
                 <Form.Label>Notebook name</Form.Label>
                 <Form.Control
                   type="text"
                   value={notebookName}
                   onChange={e => setNotebookName(e.currentTarget.value)}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>CPU {cpuLimit}m</Form.Label>
+                <Form.Range
+                  value={cpuLimit}
+                  min="50"
+                  max="4000"
+                  step="50"
+                  onChange={e => setCpuLimit(parseInt(e.currentTarget.value))}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>MEM {memLimit}Gi</Form.Label>
+                <Form.Range
+                  value={memLimit}
+                  min="1"
+                  max="20"
+                  step="1"
+                  onChange={e => setMemLimit(parseInt(e.currentTarget.value))}
                 />
               </Form.Group>
             </Form.Group>
