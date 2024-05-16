@@ -269,11 +269,11 @@ class Service:
                                 .replace("${VERSION}", self.service_version)
                                 .replace(
                                     "${DEFAULT_CPU}",
-                                    data["cpuLimit"],
+                                    str(data["cpuLimit"]),
                                 )
                                 .replace(
                                     "${DEFAULT_MEMORY}",
-                                    data["memLimit"],
+                                    f"{data['memLimit']}Gi",
                                 )
                             )
 
@@ -319,7 +319,7 @@ class Service:
             voila_options = "--Voila.ip='0.0.0.0' --port=8888 --no-browser"
             app_command = f"voila /srv/{data['notebookName']} {voila_options}"
         elif data["appType"] == "streamlit":
-            streamlit_options = "--server.baseUrlPath --server.headless true"
+            streamlit_options = "--server.port 8888 --server.headless true --server.address 0.0.0.0"
             app_command = f"streamlit run /srv/{data['pythonFileName']} {streamlit_options}"
         else:
             raise Exception(f'Not supported app type {data["appType"]}')

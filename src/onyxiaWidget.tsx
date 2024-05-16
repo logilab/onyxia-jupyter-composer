@@ -120,7 +120,9 @@ export const OnyxiaComponent = (): JSX.Element => {
       appRepoURL,
       revision,
       appImage,
-      appDir
+      appDir,
+      cpuLimit,
+      memLimit
     };
     requestAPI<any>('create', {
       body: JSON.stringify(dataToSend),
