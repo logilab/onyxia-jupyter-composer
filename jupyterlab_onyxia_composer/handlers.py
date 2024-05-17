@@ -39,18 +39,8 @@ class CheckServiceExist(APIHandler):
         github_repo_dir = Path.home() / "work" / "helm-charts-logilab-services"
         repo = git.Repo(github_repo_dir)
         service = self.get_json_body().strip().replace(" ", "_").lower()
-        # handle version
-        version = "0.0.1"
-        for tag in repo.tags:
-            if service == "-".join(tag.name.split("-")[:-1]):
-                current_version = tag.name.split("-")[-1]
-                last_number = int(current_version.split(".")[-1])
-                # increase version
-                version = ".".join(
-                    current_version.split(".")[:-1] + [str(last_number + 1)]
-                )
         metadatas = {
-            "version": version,
+            "version": "0.0.1",
             "exist": False,
             "description": "",
             "icon": "",
@@ -58,13 +48,27 @@ class CheckServiceExist(APIHandler):
         # if exist handle metadatas
         service_path = github_repo_dir / "charts" / service
         if service and service_path.exists():
-            metadatas["exists"] = True
-            chart_path = service_path / "Chart.yaml"
-            if chart_path.exists():
-                with open(chart_path) as f:
-                    chart_file = yaml.safe_load(f)
-                metadatas["description"] = chart_file["description"]
-                metadatas["icon"] = chart_file["icon"]
+            metadatas["exist"] = True
+            meta_file = service_path / "jcomposer.json"
+            if meta_file.exists():
+                with open(meta_file, "r") as f:
+                    metadatas.update(json.load(f))
+            else:
+                chart_path = service_path / "Chart.yaml"
+                if chart_path.exists():
+                    with open(chart_path) as f:
+                        chart_file = yaml.safe_load(f)
+                    metadatas["desc"] = chart_file["description"]
+                    metadatas["icon"] = chart_file["icon"]
+        # handle version
+        for tag in repo.tags:
+            if service == "-".join(tag.name.split("-")[:-1]):
+                current_version = tag.name.split("-")[-1]
+                last_number = int(current_version.split(".")[-1])
+                # increase version
+                metadatas["version"] = ".".join(
+                    current_version.split(".")[:-1] + [str(last_number + 1)]
+                )
         self.finish(json.dumps(metadatas))
 
 
@@ -192,7 +196,7 @@ class Service:
         self.repo = git.Repo(github_repo_dir)
         self.message = ""
 
-    def create_app(self, service_name, notebook_name, build_commands, app_path=None):
+    def create_app(self, service_name, build_commands, app_path=None):
         """
         Create App from local directory or git repository
         depends on build_command variable
@@ -280,7 +284,7 @@ class Service:
         service_repo_dir = self.repo_charts_dir / service_name
         if (service_repo_dir).exists():
             delete_service(service_name, update=True)
-        os.mkdir(service_repo_dir)
+        os.makedirs(service_repo_dir, exist_ok=True)
         # save metadatas
         with open(service_repo_dir / "jcomposer.json", "w") as f:
             json.dump(data, f)
@@ -306,7 +310,6 @@ class Service:
                 build_commands.append(f"RUN git checkout {data['revision']}\n")
             image = self.create_app(
                 service_name,
-                data["notebookName"],
                 build_commands,
             )
         elif app_build_type == "fromDockerImage":
@@ -317,7 +320,6 @@ class Service:
             build_commands.append("COPY . /srv/\n")
             image = self.create_app(
                 service_name,
-                data["notebookName"],
                 build_commands,
                 data["appDir"],
             )

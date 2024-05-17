@@ -39,7 +39,7 @@ export async function requestAPI<T>(
     try {
       data = JSON.parse(data);
     } catch (error) {
-      console.log('Not a JSON response body.', response);
+      console.warn('Not a JSON response body.', response);
     }
   }
 
@@ -94,11 +94,6 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [revision, setRevision] = React.useState<string | undefined>(undefined);
   const [appImage, setAppImage] = React.useState<string | undefined>(undefined);
   const [appDir, setAppDir] = React.useState<string | undefined>(undefined);
-  const AppTypeLabel = {
-    fromRepo: 'Repo URL',
-    fromDockerImage: 'Docker image name',
-    fromLocalDirectory: 'App path'
-  };
   const [version, setVersion] = React.useState<string>('0.0.1');
   const [existedApp, setExistedApp] = React.useState(false);
   const [createdApp, setCreatedApp] = React.useState<string | undefined>(
@@ -142,22 +137,6 @@ export const OnyxiaComponent = (): JSX.Element => {
       });
   };
 
-  const handleAppBuildType = (value: string) => {
-    switch (appBuildType) {
-      case 'fromRepo':
-        setAppRepoURL(value);
-        break;
-      case 'fromDockerImage':
-        setAppImage(value);
-        break;
-      case 'fromLocalDirectory':
-        setAppDir(value);
-        break;
-      default:
-        console.error('Not supported service type');
-    }
-  };
-
   const handleServiceName = (name: string) => {
     setName(name);
     requestAPI<any>('checkSrvName', {
@@ -166,10 +145,18 @@ export const OnyxiaComponent = (): JSX.Element => {
     })
       .then(reply => {
         setVersion(reply.version);
-        setDesc(reply.description);
-        setIconURL(reply.icon);
-        if (reply.exists) {
+        if (reply.exist) {
           setExistedApp(true);
+          setDesc(reply.desc);
+          setIconURL(reply.iconURL);
+          setAppRepoURL(reply.appRepoURL);
+          setNotebookName(reply.notebookName);
+          setPythonFileName(reply.pythonFileName);
+          setAppType(reply.appType);
+          setAppBuildType(reply.appBuildType);
+          setAppDir(reply.appDir);
+          setCpuLimit(reply.cpuLimit);
+          setMemLimit(reply.memLimit);
           setMessage(`WARNING: ${name} already exists, It will be updated`);
           setShowMessage(true);
         } else {
@@ -272,9 +259,9 @@ export const OnyxiaComponent = (): JSX.Element => {
                 <Form.Check
                   inline
                   type="radio"
-                  defaultChecked
                   name="appBuildType"
                   label="from Repo"
+                  checked={appBuildType === 'fromRepo'}
                   onChange={() => setAppBuildType('fromRepo')}
                 />
                 <Form.Check
@@ -282,6 +269,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                   type="radio"
                   name="appBuildType"
                   label="from Docker Image"
+                  checked={appBuildType === 'fromDockerImage'}
                   onChange={() => setAppBuildType('fromDockerImage')}
                 />
                 <Form.Check
@@ -289,43 +277,66 @@ export const OnyxiaComponent = (): JSX.Element => {
                   type="radio"
                   name="appBuildType"
                   label="from Directory"
+                  checked={appBuildType === 'fromLocalDirectory'}
                   onChange={() => setAppBuildType('fromLocalDirectory')}
                 />
               </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>{AppTypeLabel[appBuildType]} *</Form.Label>
-                <Row>
-                  <Col xs={9}>
-                    <Form.Control
-                      type="text"
-                      required
-                      onChange={e => handleAppBuildType(e.currentTarget.value)}
-                    />
-                  </Col>
-                  {appBuildType === 'fromRepo' && (
-                    <>
-                      <Col>
-                        <InputGroup className="mb-3">
-                          <InputGroup.Text>Rev</InputGroup.Text>
-                          <Form.Control
-                            type="text"
-                            disabled={appRepoURL === undefined}
-                            onChange={e => setRevision(e.currentTarget.value)}
-                          />
-                        </InputGroup>
-                      </Col>
-                    </>
-                  )}
-                </Row>
-              </Form.Group>
+              {appBuildType === 'fromRepo' && (
+                <Form.Group className="mb-3">
+                  <Form.Label>From repository *</Form.Label>
+                  <Row>
+                    <Col xs={9}>
+                      <Form.Control
+                        type="text"
+                        required
+                        value={appRepoURL}
+                        onChange={e => setAppRepoURL(e.currentTarget.value)}
+                      />
+                    </Col>
+                    <Col>
+                      <InputGroup className="mb-3">
+                        <InputGroup.Text>Rev</InputGroup.Text>
+                        <Form.Control
+                          type="text"
+                          value={revision}
+                          disabled={appRepoURL === undefined}
+                          onChange={e => setRevision(e.currentTarget.value)}
+                        />
+                      </InputGroup>
+                    </Col>
+                  </Row>
+                </Form.Group>
+              )}
+              {appBuildType === 'fromDockerImage' && (
+                <Form.Group className="mb-3">
+                  <Form.Label>From docker image *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    required
+                    value={appImage}
+                    onChange={e => setAppImage(e.currentTarget.value)}
+                  />
+                </Form.Group>
+              )}
+              {appBuildType === 'fromLocalDirectory' && (
+                <Form.Group className="mb-3">
+                  <Form.Label>From directory *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    required
+                    value={appDir}
+                    onChange={e => setAppDir(e.currentTarget.value)}
+                  />
+                </Form.Group>
+              )}
               <h4>Advanced Options</h4>
               <Form.Group className="mb-3">
                 <Form.Check
                   inline
                   type="radio"
-                  defaultChecked
                   name="appType"
                   label="voila"
+                  checked={appType === 'voila'}
                   onChange={() => setAppType('voila')}
                 />
                 <Form.Check
@@ -333,6 +344,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                   type="radio"
                   name="appType"
                   label="streamlit"
+                  checked={appType === 'streamlit'}
                   onChange={() => setAppType('streamlit')}
                 />
                 <Form.Check
@@ -340,6 +352,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                   type="radio"
                   name="appType"
                   label="jupyterlab"
+                  checked={appType === 'jupyterlab'}
                   onChange={() => setAppType('jupyterlab')}
                 />
               </Form.Group>
@@ -431,7 +444,6 @@ const ListeServices: React.FC<{ reload: string }> = ({ reload }) => {
       method: 'POST'
     })
       .then(reply => {
-        console.log(reply);
         setServices(reply.services);
       })
       .catch(reason => {
