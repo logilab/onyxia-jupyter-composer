@@ -196,7 +196,7 @@ class Service:
         self.repo = git.Repo(github_repo_dir)
         self.message = ""
 
-    def create_app(self, service_name, build_commands, app_path=None):
+    def create_app(self, service_name, build_commands, docker_tag, app_path=None):
         """
         Create App from local directory or git repository
         depends on build_command variable
@@ -223,7 +223,7 @@ class Service:
                         )
                 else:
                     shutil.copy(Path(app_path) / filename, new_image_dir / filename)
-        image = f"{DOCKER_REPO}/{service_name}:{self.service_version}"
+        image = f"{DOCKER_REPO}/{service_name}:{docker_tag}"
         return image
 
     def git_commit_and_push(self, service_name, service_dir, app_build_type):
@@ -269,6 +269,7 @@ class Service:
                                     ),
                                 )
                                 .replace("${VERSION}", self.service_version)
+                                .replace("${DOCKER_IMAGE_TAG}", data['dockerImageTag'])
                                 .replace(
                                     "${DEFAULT_CPU}",
                                     f"{data['cpuLimit']}m",
@@ -289,6 +290,7 @@ class Service:
         with open(service_repo_dir / "jcomposer.json", "w") as f:
             json.dump(data, f)
         self.service_version = data["version"]
+        docker_tag = data['dockerImageTag']
         app_build_type = data["appBuildType"]
         build_commands = []
         if data["appType"] == "jupyterlab":
@@ -311,6 +313,7 @@ class Service:
             image = self.create_app(
                 service_name,
                 build_commands,
+                docker_tag,
             )
         elif app_build_type == "fromDockerImage":
             # service from existed docker image
@@ -321,6 +324,7 @@ class Service:
             image = self.create_app(
                 service_name,
                 build_commands,
+                docker_tag,
                 data["appDir"],
             )
         else:

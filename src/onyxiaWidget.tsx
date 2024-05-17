@@ -78,6 +78,7 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [name, setName] = React.useState<string | undefined>(undefined);
   const [desc, setDesc] = React.useState<string>('');
   const [iconURL, setIconURL] = React.useState<string>('');
+  const [dockerImageTag, setDockerImageTag] = React.useState<string>('0.0.1');
   const [notebookName, setNotebookName] = React.useState('index.ipynb');
   const [pythonFileName, setPythonFileName] = React.useState('index.py');
   const [message, setMessage] = React.useState<string>('');
@@ -99,8 +100,8 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [createdApp, setCreatedApp] = React.useState<string | undefined>(
     undefined
   );
-  const [cpuLimit, setCpuLimit] = React.useState(2000);
-  const [memLimit, setMemLimit] = React.useState(3);
+  const [cpuLimit, setCpuLimit] = React.useState(1500);
+  const [memLimit, setMemLimit] = React.useState(2);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -110,6 +111,7 @@ export const OnyxiaComponent = (): JSX.Element => {
       version,
       desc,
       iconURL,
+      dockerImageTag,
       notebookName,
       pythonFileName,
       appType,
@@ -159,6 +161,7 @@ export const OnyxiaComponent = (): JSX.Element => {
           setMemLimit(reply.memLimit);
           setMessage(`WARNING: ${name} already exists, It will be updated`);
           setShowMessage(true);
+          setDockerImageTag(reply.dockerImageTag);
         } else {
           setExistedApp(false);
           setMessage('');
@@ -252,6 +255,16 @@ export const OnyxiaComponent = (): JSX.Element => {
                 value={iconURL}
                 onChange={e => setIconURL(e.currentTarget.value)}
               />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Col xs>
+                <Form.Label>Docker image tag</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={dockerImageTag}
+                  onChange={e => setDockerImageTag(e.currentTarget.value)}
+                />
+              </Col>
             </Form.Group>
             <h3>Build Method</h3>
             <Form.Group className="mb-3">
