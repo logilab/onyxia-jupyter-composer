@@ -85,7 +85,9 @@ export const OnyxiaComponent = (): JSX.Element => {
   const [appBuildType, setAppBuildType] = React.useState<
     'fromRepo' | 'fromDockerImage' | 'fromLocalDirectory'
   >('fromRepo');
-  const [appType, setAppType] = React.useState<'voila' | 'streamlit'>('voila');
+  const [appType, setAppType] = React.useState<
+    'voila' | 'streamlit' | 'jupyterlab'
+  >('voila');
   const [appRepoURL, setAppRepoURL] = React.useState<string | undefined>(
     undefined
   );
@@ -333,8 +335,15 @@ export const OnyxiaComponent = (): JSX.Element => {
                   label="streamlit"
                   onChange={() => setAppType('streamlit')}
                 />
+                <Form.Check
+                  inline
+                  type="radio"
+                  name="appType"
+                  label="jupyterlab"
+                  onChange={() => setAppType('jupyterlab')}
+                />
               </Form.Group>
-              {appType === 'voila' ? (
+              {appType === 'voila' && (
                 <Form.Group className="mb-3">
                   <Form.Label>Notebook name</Form.Label>
                   <Form.Control
@@ -343,7 +352,8 @@ export const OnyxiaComponent = (): JSX.Element => {
                     onChange={e => setNotebookName(e.currentTarget.value)}
                   />
                 </Form.Group>
-              ) : (
+              )}
+              {appType === 'streamlit' && (
                 <Form.Group className="mb-3">
                   <Form.Label>Python file name</Form.Label>
                   <Form.Control

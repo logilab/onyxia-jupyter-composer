@@ -244,9 +244,7 @@ class Service:
                         service_repo_dir / finput / "statefulset.yaml", "w"
                     ) as outf:
                         for line in inf:
-                            outf.write(
-                                line.replace("${APP_COMMAND}", app_command)
-                            )
+                            outf.write(line.replace("${APP_COMMAND}", app_command))
             else:
                 with open(self.service_template_dir / finput, "r") as inf:
                     with open(service_repo_dir / finput, "w") as outf:
@@ -284,11 +282,22 @@ class Service:
         service_repo_dir = self.repo_charts_dir / service_name
         self.service_version = data["version"]
         app_build_type = data["appBuildType"]
+        build_commands = []
+        if data["appType"] == "jupyterlab":
+            build_commands.extend(
+                [
+                    "RUN apt-get -y update && apt-get -y upgrade\n",
+                    "RUN curl -sL https://deb.nodesource.com/setup_20.x | bash -\n",
+                    "RUN apt-get update\n",
+                    "RUN apt-get install nodejs yarn -y\n",
+                    "RUN apt-get clean -y && apt-get -y autoremove && apt-get -y autoclean\n",
+                ]
+            )
         if app_build_type == "fromRepo":
             # image creation from repo
-            build_commands = [
+            build_commands.append(
                 "WORKDIR /srv\n" f"RUN git clone {data['appRepoURL']} .\n"
-            ]
+            )
             if "revision" in data:
                 build_commands.append(f"RUN git checkout {data['revision']}\n")
             image = self.create_app(
@@ -301,10 +310,11 @@ class Service:
             image = data["appImage"]
         elif app_build_type == "fromLocalDirectory":
             # image creation from path
+            build_commands.append("COPY . /srv/\n")
             image = self.create_app(
                 service_name,
                 data["notebookName"],
-                ["COPY . /srv/\n"],
+                build_commands,
                 data["appDir"],
             )
         else:
@@ -319,8 +329,17 @@ class Service:
             voila_options = "--Voila.ip='0.0.0.0' --port=8888 --no-browser"
             app_command = f"voila /srv/{data['notebookName']} {voila_options}"
         elif data["appType"] == "streamlit":
-            streamlit_options = "--server.port 8888 --server.headless true --server.address 0.0.0.0"
-            app_command = f"streamlit run /srv/{data['pythonFileName']} {streamlit_options}"
+            streamlit_options = (
+                "--server.port 8888 --server.headless true --server.address 0.0.0.0"
+            )
+            app_command = (
+                f"streamlit run /srv/{data['pythonFileName']} {streamlit_options}"
+            )
+        elif data["appType"] == "jupyterlab":
+            jlab_options = (
+                "--no-browser --ip '0.0.0.0' --ContentsManager.allow_hidden=True"
+            )
+            app_command = f"jupyter lab {jlab_options}"
         else:
             raise Exception(f'Not supported app type {data["appType"]}')
         self.copy_templates(service_name, image, app_command, data)
