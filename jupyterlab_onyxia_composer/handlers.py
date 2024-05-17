@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import shutil
 import yaml
+import traceback
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
@@ -25,8 +26,7 @@ class CreateServiceHandler(APIHandler):
             service.create_service(input_data)
             message = service.message
         except Exception as e:
-            message = str(e)
-            pass
+            message = traceback.print_exc()
         data = {"message": message}
         self.finish(json.dumps(data))
 
@@ -277,9 +277,13 @@ class Service:
 
     def create_service(self, data):
         service_name = data["name"].strip().replace(" ", "_").lower()
-        if (self.repo_charts_dir / service_name).exists():
-            delete_service(service_name, update=True)
         service_repo_dir = self.repo_charts_dir / service_name
+        if (service_repo_dir).exists():
+            delete_service(service_name, update=True)
+        os.mkdir(service_repo_dir)
+        # save metadatas
+        with open(service_repo_dir / "jcomposer.json", "w") as f:
+            json.dump(data, f)
         self.service_version = data["version"]
         app_build_type = data["appBuildType"]
         build_commands = []
@@ -319,11 +323,6 @@ class Service:
             )
         else:
             raise "Not supported app type"
-        try:
-            os.mkdir(service_repo_dir)
-        except Exception:
-            self.message = "This service already exist"
-            raise Exception("This service already exist")
         # handle templates
         if data["appType"] == "voila":
             voila_options = "--Voila.ip='0.0.0.0' --port=8888 --no-browser"
