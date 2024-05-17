@@ -253,8 +253,8 @@ export const OnyxiaComponent = (): JSX.Element => {
                 onChange={e => setIconURL(e.currentTarget.value)}
               />
             </Form.Group>
+            <h3>Build Method</h3>
             <Form.Group className="mb-3">
-              <h4>Build App</h4>
               <Form.Group className="mb-3">
                 <Form.Check
                   inline
@@ -329,7 +329,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                   />
                 </Form.Group>
               )}
-              <h4>Advanced Options</h4>
+              <h3>App Type</h3>
               <Form.Group className="mb-3">
                 <Form.Check
                   inline
@@ -376,6 +376,7 @@ export const OnyxiaComponent = (): JSX.Element => {
                   />
                 </Form.Group>
               )}
+              <h3>Resources</h3>
               <Form.Group className="mb-3">
                 <Form.Label>CPU {cpuLimit}m</Form.Label>
                 <Form.Range

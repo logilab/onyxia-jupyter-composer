@@ -271,7 +271,7 @@ class Service:
                                 .replace("${VERSION}", self.service_version)
                                 .replace(
                                     "${DEFAULT_CPU}",
-                                    str(data["cpuLimit"]),
+                                    f"{data['cpuLimit']}m",
                                 )
                                 .replace(
                                     "${DEFAULT_MEMORY}",
