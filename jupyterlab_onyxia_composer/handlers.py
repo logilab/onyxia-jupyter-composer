@@ -25,8 +25,8 @@ class CreateServiceHandler(APIHandler):
             service = Service()
             service.create_service(input_data)
             message = service.message
-        except Exception as e:
-            message = traceback.print_exc()
+        except Exception:
+            message = str(traceback.print_exc())
         data = {"message": message}
         self.finish(json.dumps(data))
 
@@ -338,6 +338,7 @@ class Service:
             jlab_options = (
                 "--no-browser --ip '0.0.0.0' --ContentsManager.allow_hidden=True"
             )
+            jlab_options += " --LabApp.token='$(PASSWORD)'"
             app_command = f"jupyter lab {jlab_options}"
         else:
             raise Exception(f'Not supported app type {data["appType"]}')
