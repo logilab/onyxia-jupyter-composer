@@ -223,7 +223,7 @@ class Service:
                         )
                 else:
                     shutil.copy(Path(app_path) / filename, new_image_dir / filename)
-        image = f"{DOCKER_REPO}/{service_name}:latest"
+        image = f"{DOCKER_REPO}/{service_name}:{self.service_version}"
         return image
 
     def git_commit_and_push(self, service_name, service_dir, app_build_type):
