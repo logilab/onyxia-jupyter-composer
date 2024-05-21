@@ -234,8 +234,30 @@ class Service:
         origin = self.repo.remote(name="origin")
         origin.push()
 
-    def copy_templates(self, service_name, image, app_command, data):
+    def get_app_command(self, app_type, voila_filename, streamlit_filename):
+        if app_type == "voila":
+            voila_options = "--Voila.ip='0.0.0.0' --port=8888 --no-browser"
+            app_command = f"voila /srv/{voila_filename} {voila_options}"
+        elif app_type == "streamlit":
+            streamlit_options = (
+                "--server.port 8888 --server.headless true --server.address 0.0.0.0"
+            )
+            app_command = f"streamlit run /srv/{streamlit_filename} {streamlit_options}"
+        elif app_type == "jupyterlab":
+            jlab_options = (
+                "--no-browser --ip '0.0.0.0' --ContentsManager.allow_hidden=True"
+            )
+            jlab_options += " --LabApp.token='$(PASSWORD)'"
+            app_command = f"jupyter lab {jlab_options}"
+        else:
+            raise Exception(f"Not supported app type {app_type}")
+        return app_command
+
+    def handle_templates(self, service_name, image, data):
         service_repo_dir = self.repo_charts_dir / service_name
+        app_command = self.get_app_command(
+            data["appType"], data.get("notebookName"), data.get("pythonFileName")
+        )
         for finput in os.listdir(self.service_template_dir):
             if os.path.isdir(self.service_template_dir / finput):
                 shutil.copytree(
@@ -269,7 +291,7 @@ class Service:
                                     ),
                                 )
                                 .replace("${VERSION}", self.service_version)
-                                .replace("${DOCKER_IMAGE_TAG}", data['dockerImageTag'])
+                                .replace("${DOCKER_IMAGE_TAG}", data["dockerImageTag"])
                                 .replace(
                                     "${DEFAULT_CPU}",
                                     f"{data['cpuLimit']}m",
@@ -280,18 +302,7 @@ class Service:
                                 )
                             )
 
-    def create_service(self, data):
-        service_name = data["name"].strip().replace(" ", "_").lower()
-        service_repo_dir = self.repo_charts_dir / service_name
-        if (service_repo_dir).exists():
-            delete_service(service_name, update=True)
-        os.makedirs(service_repo_dir, exist_ok=True)
-        # save metadatas
-        with open(service_repo_dir / "jcomposer.json", "w") as f:
-            json.dump(data, f)
-        self.service_version = data["version"]
-        docker_tag = data['dockerImageTag']
-        app_build_type = data["appBuildType"]
+    def get_build_commands(self, data):
         build_commands = []
         if data["appType"] == "jupyterlab":
             build_commands.extend(
@@ -303,13 +314,36 @@ class Service:
                     "RUN apt-get clean -y && apt-get -y autoremove && apt-get -y autoclean\n",
                 ]
             )
-        if app_build_type == "fromRepo":
+        if data["appBuildType"] == "fromRepo":
             # image creation from repo
             build_commands.append(
                 "WORKDIR /srv\n" f"RUN git clone {data['appRepoURL']} .\n"
             )
             if "revision" in data:
                 build_commands.append(f"RUN git checkout {data['revision']}\n")
+        elif data["appBuildType"] == "fromLocalDirectory":
+            # image creation from path
+            build_commands.append("COPY . /srv/\n")
+        else:
+            raise "Not supported app type"
+        return build_commands
+
+    def create_service(self, data):
+        service_name = data["name"].strip().replace(" ", "_").lower()
+        service_repo_dir = self.repo_charts_dir / service_name
+        if (service_repo_dir).exists():
+            delete_service(service_name, update=True)
+        os.makedirs(service_repo_dir, exist_ok=True)
+        # save metadatas
+        with open(service_repo_dir / "jcomposer.json", "w") as f:
+            json.dump(data, f)
+        self.service_version = data["version"]
+        docker_tag = data["dockerImageTag"]
+        app_build_type = data["appBuildType"]
+        build_commands = self.get_build_commands(data)
+        # create app id necessary
+        if app_build_type == "fromRepo":
+            # image creation from repo
             image = self.create_app(
                 service_name,
                 build_commands,
@@ -320,7 +354,6 @@ class Service:
             image = data["appImage"]
         elif app_build_type == "fromLocalDirectory":
             # image creation from path
-            build_commands.append("COPY . /srv/\n")
             image = self.create_app(
                 service_name,
                 build_commands,
@@ -328,29 +361,11 @@ class Service:
                 data["appDir"],
             )
         else:
-            raise "Not supported app type"
-        # handle templates
-        if data["appType"] == "voila":
-            voila_options = "--Voila.ip='0.0.0.0' --port=8888 --no-browser"
-            app_command = f"voila /srv/{data['notebookName']} {voila_options}"
-        elif data["appType"] == "streamlit":
-            streamlit_options = (
-                "--server.port 8888 --server.headless true --server.address 0.0.0.0"
-            )
-            app_command = (
-                f"streamlit run /srv/{data['pythonFileName']} {streamlit_options}"
-            )
-        elif data["appType"] == "jupyterlab":
-            jlab_options = (
-                "--no-browser --ip '0.0.0.0' --ContentsManager.allow_hidden=True"
-            )
-            jlab_options += " --LabApp.token='$(PASSWORD)'"
-            app_command = f"jupyter lab {jlab_options}"
-        else:
-            raise Exception(f'Not supported app type {data["appType"]}')
-        self.copy_templates(service_name, image, app_command, data)
+            raise "Not supported app build type"
+        self.handle_templates(service_name, image, data)
         # git
         self.git_commit_and_push(service_name, service_repo_dir, app_build_type)
+        # message
         repo_url = self.repo.remotes.origin.url
         if "@" in repo_url:
             repo_url = f"https://{repo_url.split('@')[-1]}"
